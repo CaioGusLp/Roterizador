@@ -1,0 +1,626 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Premiatta RouteMap — Sistema de Roteirização Premium</title>
+
+  <!-- =============================================
+       FONTE: Bebas Neue (títulos) + DM Sans (corpo)
+       Ambas via Google Fonts — sem internet, substitui
+       ============================================= -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,300&display=swap" rel="stylesheet" />
+
+  <!-- =============================================
+       ÍCONES: Lucide (CDN) — minimalistas e limpos
+       ============================================= -->
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+
+  <!-- =============================================
+       SortableJS — drag and drop de paradas
+       ============================================= -->
+  <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
+
+  <!-- =============================================
+       jsPDF — exportação em PDF sem backend
+       ============================================= -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+  <!-- =============================================
+       SheetJS — exportação para Excel (.xlsx)
+       ============================================= -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- ==================== SPLASH SCREEN (caminhão + logo) ==================== -->
+  <div id="splashScreen" class="splash">
+
+    <!-- Fundo com partículas douradas -->
+    <div class="splash-bg">
+      <div class="splash-particle p1"></div>
+      <div class="splash-particle p2"></div>
+      <div class="splash-particle p3"></div>
+      <div class="splash-particle p4"></div>
+      <div class="splash-particle p5"></div>
+      <div class="splash-particle p6"></div>
+    </div>
+
+    <!-- Conteúdo central -->
+    <div class="splash-content">
+
+      <!-- Logo Premiatta (imagem real) -->
+      <div class="splash-logo">
+        <img src="logo-premiatta.png" alt="Premiatta Petfood" class="splash-logo-img" />
+      </div>
+
+      <!-- Divisor dourado -->
+      <div class="splash-divider"></div>
+
+      <!-- Cena do caminhão na estrada -->
+      <div class="splash-scene">
+
+        <!-- Estrada com tracejado animado -->
+        <div class="road">
+          <div class="road-dashes">
+            <div class="dash"></div>
+            <div class="dash"></div>
+            <div class="dash"></div>
+            <div class="dash"></div>
+            <div class="dash"></div>
+            <div class="dash"></div>
+            <div class="dash"></div>
+            <div class="dash"></div>
+          </div>
+          <!-- Poeira / rastro do caminhão -->
+          <div class="truck-dust">
+            <div class="dust d1"></div>
+            <div class="dust d2"></div>
+            <div class="dust d3"></div>
+          </div>
+        </div>
+
+        <!-- CAMINHÃO SVG completo -->
+        <div class="truck-wrapper">
+          <svg class="truck-svg" viewBox="0 0 320 120" xmlns="http://www.w3.org/2000/svg">
+
+            <!-- Sombra do caminhão no chão -->
+            <ellipse cx="160" cy="108" rx="130" ry="8" fill="rgba(0,0,0,0.35)" class="truck-shadow"/>
+
+            <!-- === CARROCERIA / BAÚ === -->
+            <!-- Corpo principal do baú -->
+            <rect x="10" y="30" width="195" height="68" rx="4" fill="#1a1a1a"/>
+            <!-- Detalhe superior do baú -->
+            <rect x="10" y="30" width="195" height="10" rx="4" fill="#222"/>
+            <!-- Listras decorativas douradas -->
+            <rect x="10" y="55" width="195" height="3" fill="#F5B400" opacity="0.6"/>
+            <rect x="10" y="82" width="195" height="2" fill="#F5B400" opacity="0.3"/>
+            <!-- Logo PREMIATTA no baú -->
+            <rect x="30" y="40" width="155" height="38" rx="3" fill="#111"/>
+            <text x="107" y="56" text-anchor="middle" fill="#F5B400" font-family="'Bebas Neue',Impact,sans-serif" font-size="14" letter-spacing="3">PREMIATTA</text>
+            <text x="107" y="70" text-anchor="middle" fill="#F5B400" font-family="sans-serif" font-size="7" letter-spacing="5" opacity="0.8">PETFOOD</text>
+            <!-- Porta traseira do baú -->
+            <line x1="200" y1="32" x2="200" y2="96" stroke="#333" stroke-width="1.5"/>
+            <!-- Rebites / parafusos decorativos -->
+            <circle cx="18" cy="36" r="2" fill="#333"/>
+            <circle cx="18" cy="90" r="2" fill="#333"/>
+            <circle cx="197" cy="36" r="2" fill="#333"/>
+            <circle cx="197" cy="90" r="2" fill="#333"/>
+
+            <!-- === CABINE === -->
+            <!-- Corpo da cabine -->
+            <rect x="200" y="42" width="88" height="56" rx="5" fill="#111"/>
+            <!-- Teto arredondado da cabine -->
+            <path d="M200 55 Q200 42 215 42 L275 42 Q285 42 288 52 L288 55 Z" fill="#1a1a1a"/>
+            <!-- Para-brisa -->
+            <rect x="218" y="44" width="56" height="32" rx="3" fill="#0d2a3a" opacity="0.9"/>
+            <!-- Reflexo do para-brisa -->
+            <path d="M220 46 L260 46 L256 50 L224 50 Z" fill="rgba(255,255,255,0.06)"/>
+            <!-- Janela lateral da cabine -->
+            <rect x="284" y="46" width="0" height="0"/>
+            <!-- Grade dianteira -->
+            <rect x="284" y="56" width="18" height="24" rx="3" fill="#1a1a1a"/>
+            <line x1="284" y1="62" x2="302" y2="62" stroke="#F5B400" stroke-width="1.2" opacity="0.7"/>
+            <line x1="284" y1="67" x2="302" y2="67" stroke="#F5B400" stroke-width="1.2" opacity="0.7"/>
+            <line x1="284" y1="72" x2="302" y2="72" stroke="#F5B400" stroke-width="1.2" opacity="0.7"/>
+            <line x1="284" y1="77" x2="302" y2="77" stroke="#F5B400" stroke-width="1.2" opacity="0.7"/>
+            <line x1="291" y1="56" x2="291" y2="80" stroke="#F5B400" stroke-width="1" opacity="0.4"/>
+            <!-- Parachoque dianteiro -->
+            <rect x="282" y="84" width="22" height="6" rx="2" fill="#333"/>
+            <!-- Detalhe dourado parachoque -->
+            <rect x="284" y="85" width="18" height="2" rx="1" fill="#F5B400" opacity="0.5"/>
+
+            <!-- Faróis dianteiros acesos -->
+            <rect x="300" y="56" width="5" height="8" rx="1" fill="#FFF9C4"/>
+            <rect x="300" y="68" width="5" height="6" rx="1" fill="#FF6B35" opacity="0.8"/>
+            <!-- Feixe de luz do farol -->
+            <polygon points="305,57 340,45 340,68 305,63" fill="rgba(255,249,196,0.06)" class="headlight-beam"/>
+
+            <!-- Espelho retrovisor -->
+            <rect x="296" y="46" width="12" height="7" rx="2" fill="#222"/>
+            <rect x="297" y="47" width="10" height="5" rx="1" fill="#1a3a4a"/>
+
+            <!-- Detalhe lateral cabine — friso dourado -->
+            <rect x="200" y="92" width="88" height="2" rx="1" fill="#F5B400" opacity="0.5"/>
+
+            <!-- === CHASSI / ESTRUTURA === -->
+            <rect x="10" y="95" width="292" height="5" rx="2" fill="#222"/>
+
+            <!-- === RODAS === -->
+            <!-- Roda traseira dupla esquerda -->
+            <g class="wheel wheel-rear-l">
+              <circle cx="60" cy="100" r="16" fill="#1a1a1a" stroke="#333" stroke-width="2"/>
+              <circle cx="60" cy="100" r="11" fill="#111"/>
+              <circle cx="60" cy="100" r="5" fill="#F5B400"/>
+              <!-- Raios -->
+              <line x1="60" y1="84" x2="60" y2="89" stroke="#444" stroke-width="2"/>
+              <line x1="60" y1="111" x2="60" y2="116" stroke="#444" stroke-width="2"/>
+              <line x1="44" y1="100" x2="49" y2="100" stroke="#444" stroke-width="2"/>
+              <line x1="71" y1="100" x2="76" y2="100" stroke="#444" stroke-width="2"/>
+              <line x1="49" y1="89" x2="52" y2="92" stroke="#444" stroke-width="2"/>
+              <line x1="68" y1="108" x2="71" y2="111" stroke="#444" stroke-width="2"/>
+              <line x1="49" y1="111" x2="52" y2="108" stroke="#444" stroke-width="2"/>
+              <line x1="68" y1="92" x2="71" y2="89" stroke="#444" stroke-width="2"/>
+            </g>
+            <!-- Roda traseira dupla direita (levemente atrás) -->
+            <g class="wheel wheel-rear-r">
+              <circle cx="80" cy="100" r="15" fill="#161616" stroke="#2a2a2a" stroke-width="2"/>
+              <circle cx="80" cy="100" r="10" fill="#0e0e0e"/>
+              <circle cx="80" cy="100" r="4" fill="#c99200"/>
+              <line x1="80" y1="85" x2="80" y2="90" stroke="#333" stroke-width="1.5"/>
+              <line x1="80" y1="110" x2="80" y2="115" stroke="#333" stroke-width="1.5"/>
+              <line x1="65" y1="100" x2="70" y2="100" stroke="#333" stroke-width="1.5"/>
+              <line x1="90" y1="100" x2="95" y2="100" stroke="#333" stroke-width="1.5"/>
+            </g>
+            <!-- Tampa do eixo traseiro -->
+            <rect x="44" y="96" width="46" height="4" rx="2" fill="#2a2a2a"/>
+
+            <!-- Roda dianteira -->
+            <g class="wheel wheel-front">
+              <circle cx="255" cy="100" r="16" fill="#1a1a1a" stroke="#333" stroke-width="2"/>
+              <circle cx="255" cy="100" r="11" fill="#111"/>
+              <circle cx="255" cy="100" r="5" fill="#F5B400"/>
+              <line x1="255" y1="84" x2="255" y2="89" stroke="#444" stroke-width="2"/>
+              <line x1="255" y1="111" x2="255" y2="116" stroke="#444" stroke-width="2"/>
+              <line x1="239" y1="100" x2="244" y2="100" stroke="#444" stroke-width="2"/>
+              <line x1="266" y1="100" x2="271" y2="100" stroke="#444" stroke-width="2"/>
+              <line x1="244" y1="89" x2="247" y2="92" stroke="#444" stroke-width="2"/>
+              <line x1="263" y1="108" x2="266" y2="111" stroke="#444" stroke-width="2"/>
+              <line x1="244" y1="111" x2="247" y2="108" stroke="#444" stroke-width="2"/>
+              <line x1="263" y1="92" x2="266" y2="89" stroke="#444" stroke-width="2"/>
+            </g>
+
+            <!-- Escape / chaminé -->
+            <rect x="270" y="22" width="6" height="22" rx="3" fill="#222"/>
+            <rect x="268" y="20" width="10" height="5" rx="2" fill="#333"/>
+            <!-- Fumaça do escape -->
+            <circle cx="273" cy="16" r="4" fill="rgba(180,180,180,0.3)" class="smoke s1"/>
+            <circle cx="270" cy="10" r="5" fill="rgba(180,180,180,0.2)" class="smoke s2"/>
+            <circle cx="275" cy="4"  r="4" fill="rgba(180,180,180,0.15)" class="smoke s3"/>
+
+          </svg>
+        </div>
+
+      </div>
+
+      <!-- Barra de progresso -->
+      <div class="splash-progress-wrap">
+        <div class="splash-progress-bar">
+          <div class="splash-progress-fill" id="splashProgressFill"></div>
+        </div>
+        <span class="splash-progress-label" id="splashProgressLabel">Iniciando sistema…</span>
+      </div>
+
+      <!-- Subtítulo -->
+      <p class="splash-sub">Sistema Premium de Roteirização</p>
+
+    </div>
+  </div>
+  <!-- FIM SPLASH -->
+
+  <!-- ==================== LOADING OVERLAY (rota) ==================== -->
+  <div id="loadingOverlay" class="loading-overlay hidden">
+    <div class="loading-spinner">
+      <div class="spinner-ring"></div>
+      <span class="loading-text">Calculando rota…</span>
+    </div>
+  </div>
+
+  <!-- ==================== TOAST NOTIFICATIONS ==================== -->
+  <div id="toastContainer" class="toast-container"></div>
+
+  <!-- ==================== HEADER ==================== -->
+  <header class="header">
+    <div class="header-inner">
+      <div class="logo">
+        <!-- Logo real da Premiatta -->
+        <img src="logo-premiatta.png" alt="Premiatta Petfood" class="header-logo-img" />
+        <span class="logo-sub-tag">ROUTE MAP</span>
+      </div>
+
+      <nav class="header-nav">
+        <span class="nav-badge">
+          <i data-lucide="map-pin" class="nav-icon"></i>
+          Roteirização Inteligente
+        </span>
+        <span class="nav-badge nav-badge--accent">
+          <i data-lucide="zap" class="nav-icon"></i>
+          Premium
+        </span>
+      </nav>
+    </div>
+    <div class="header-bar"></div>
+  </header>
+
+  <!-- ==================== MAIN LAYOUT ==================== -->
+  <main class="app-layout">
+
+    <!-- ========== SIDEBAR / PAINEL ESQUERDO ========== -->
+    <aside class="sidebar" id="sidebar">
+
+      <!-- Seção: Modo de Transporte -->
+      <section class="panel-section">
+        <h3 class="section-label">
+          <i data-lucide="truck" class="section-icon"></i>
+          Veículo de Entrega
+        </h3>
+        <div class="transport-tabs transport-tabs--single">
+          <button class="transport-btn transport-btn--truck active" data-mode="DRIVING" title="Caminhão">
+            <svg class="truck-icon-small" viewBox="0 0 48 28" xmlns="http://www.w3.org/2000/svg" width="28" height="16">
+              <rect x="1" y="4" width="30" height="18" rx="2" fill="currentColor" opacity="0.9"/>
+              <rect x="31" y="9" width="15" height="13" rx="2" fill="currentColor"/>
+              <rect x="43" y="10" width="4" height="6" rx="1" fill="currentColor" opacity="0.6"/>
+              <circle cx="9" cy="24" r="4" fill="currentColor" stroke="var(--gold)" stroke-width="1.5"/>
+              <circle cx="22" cy="24" r="4" fill="currentColor" stroke="var(--gold)" stroke-width="1.5"/>
+              <circle cx="38" cy="24" r="4" fill="currentColor" stroke="var(--gold)" stroke-width="1.5"/>
+              <rect x="4" y="11" width="22" height="8" rx="1" fill="var(--gold)" opacity="0.25"/>
+              <text x="15" y="18" text-anchor="middle" fill="var(--gold)" font-size="5" font-family="'Bebas Neue',sans-serif" letter-spacing="1">PREMIATTA</text>
+            </svg>
+            <span>Caminhão</span>
+          </button>
+        </div>
+      </section>
+
+      <!-- Seção: Endereços -->
+      <section class="panel-section">
+        <h3 class="section-label">
+          <i data-lucide="route" class="section-icon"></i>
+          Endereços da Rota
+        </h3>
+
+        <!-- ORIGEM -->
+        <div class="address-field" id="originField">
+          <div class="field-marker origin-marker">
+            <i data-lucide="circle-dot"></i>
+          </div>
+          <div class="field-body">
+            <label class="field-label">Local de Partida</label>
+            <div class="autocomplete-wrapper">
+              <input
+                type="text"
+                id="originInput"
+                class="address-input"
+                placeholder="Digite o endereço de origem…"
+                autocomplete="off"
+              />
+              <button class="clear-field-btn hidden" data-target="originInput" title="Limpar">
+                <i data-lucide="x"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- SEPARADOR -->
+        <div class="route-connector">
+          <div class="connector-line"></div>
+        </div>
+
+        <!-- PARADAS (container sortable) -->
+        <div id="stopsContainer" class="stops-container"></div>
+
+        <!-- SEPARADOR FINAL -->
+        <div class="route-connector" id="lastConnector">
+          <div class="connector-line"></div>
+        </div>
+
+        <!-- DESTINO / RETORNO -->
+        <div class="address-field" id="destField">
+          <div class="field-marker return-marker">
+            <i data-lucide="home"></i>
+          </div>
+          <div class="field-body">
+            <label class="field-label">Local de Retorno</label>
+            <div class="autocomplete-wrapper">
+              <input
+                type="text"
+                id="destInput"
+                class="address-input"
+                placeholder="Digite o endereço de destino…"
+                autocomplete="off"
+              />
+              <button class="clear-field-btn hidden" data-target="destInput" title="Limpar">
+                <i data-lucide="x"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Opções extras -->
+        <div class="options-row">
+          <label class="toggle-label" title="Otimizar ordem das paradas automaticamente">
+            <input type="checkbox" id="optimizeToggle" checked />
+            <span class="toggle-track"></span>
+            <span class="toggle-text">Otimizar paradas</span>
+          </label>
+        </div>
+
+        <!-- Adicionar parada -->
+        <button class="btn btn--outline btn--full" id="addStopBtn">
+          <i data-lucide="plus-circle"></i>
+          Adicionar Parada
+        </button>
+      </section>
+
+      <!-- Seção: Ações -->
+      <section class="panel-section actions-section">
+        <div class="actions-grid">
+          <button class="btn btn--primary btn--full" id="calcBtn">
+            <i data-lucide="navigation"></i>
+            Calcular Rota
+          </button>
+          <button class="btn btn--ghost" id="clearBtn" title="Limpar rota">
+            <i data-lucide="trash-2"></i>
+            Limpar
+          </button>
+        </div>
+      </section>
+
+      <!-- Seção: Resumo da Rota -->
+      <section class="panel-section hidden" id="routeSummarySection">
+        <h3 class="section-label">
+          <i data-lucide="info" class="section-icon"></i>
+          Resumo da Rota
+        </h3>
+        <div class="summary-cards">
+          <div class="summary-card">
+            <i data-lucide="milestone"></i>
+            <div>
+              <span class="summary-value" id="totalDistance">—</span>
+              <span class="summary-key">Distância total</span>
+            </div>
+          </div>
+          <div class="summary-card">
+            <i data-lucide="clock"></i>
+            <div>
+              <span class="summary-value" id="totalDuration">—</span>
+              <span class="summary-key">Tempo estimado</span>
+            </div>
+          </div>
+          <div class="summary-card">
+            <i data-lucide="map-pin"></i>
+            <div>
+              <span class="summary-value" id="totalStops">—</span>
+              <span class="summary-key">Paradas</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Rotas Alternativas -->
+        <div id="altRoutesPanel" class="alt-routes hidden">
+          <h4 class="alt-title">
+            <i data-lucide="shuffle"></i>
+            Rotas Alternativas
+          </h4>
+          <div id="altRoutesList" class="alt-list"></div>
+        </div>
+
+      </section>
+
+      <!-- Tempo por Trecho — aparece após calcular -->
+      <section class="panel-section hidden" id="legTimesSection">
+        <h3 class="section-label">
+          <i data-lucide="timer" class="section-icon"></i>
+          Tempo por Trecho
+        </h3>
+        <div id="legTimesList" class="leg-times-list"></div>
+      </section>
+
+      <!-- Ordem Otimizada — aparece apenas quando otimização ativa -->
+      <div id="optimizedOrderPanel" class="optimized-order-panel hidden">
+        <h4 class="optimized-order-title">
+          <i data-lucide="list-ordered"></i>
+          Ordem Otimizada de Entregas
+        </h4>
+        <div id="optimizedOrderList" class="optimized-order-list"></div>
+      </div>
+
+      <!-- ====== SEÇÃO EXPORTAR: sempre visível ====== -->
+      <section class="panel-section export-always-section">
+
+        <!-- Navegar Agora -->
+        <div class="export-group">
+          <h4 class="export-title">
+            <i data-lucide="navigation-2"></i>
+            Navegar Agora
+          </h4>
+          <div class="nav-quick-buttons">
+            <button class="btn btn--nav-quick btn--gmaps-quick" id="exportGmapsBtn" title="Abrir rota completa no Google Maps">
+              <svg viewBox="0 0 48 48" width="18" height="18" xmlns="http://www.w3.org/2000/svg">
+                <path d="M24 4C15.163 4 8 11.163 8 20c0 12 16 28 16 28s16-16 16-28c0-8.837-7.163-16-16-16z" fill="#EA4335"/>
+                <path d="M24 4C15.163 4 8 11.163 8 20c0 4.1 1.54 7.84 4.07 10.72L28.72 7.07A15.92 15.92 0 0 0 24 4z" fill="#FBBC04"/>
+                <circle cx="24" cy="20" r="6" fill="#fff"/>
+                <circle cx="24" cy="20" r="4" fill="#1A73E8"/>
+              </svg>
+              <span>Google Maps</span>
+              <i data-lucide="external-link" style="width:11px;height:11px;opacity:.5;margin-left:auto"></i>
+            </button>
+            <button class="btn btn--nav-quick btn--waze-quick" id="exportWazeBtn" title="Abrir destino no Waze">
+              <svg viewBox="0 0 48 48" width="18" height="18" xmlns="http://www.w3.org/2000/svg">
+                <circle cx="24" cy="22" r="18" fill="#33CCFF"/>
+                <ellipse cx="24" cy="24" rx="14" ry="13" fill="#fff"/>
+                <circle cx="20" cy="22" r="2" fill="#333"/>
+                <circle cx="28" cy="22" r="2" fill="#333"/>
+                <path d="M20 28 Q24 32 28 28" stroke="#333" stroke-width="2" fill="none" stroke-linecap="round"/>
+                <circle cx="31" cy="13" r="3" fill="#FF6600"/>
+                <line x1="29" y1="15" x2="27" y2="18" stroke="#FF6600" stroke-width="2"/>
+              </svg>
+              <span>Waze</span>
+              <i data-lucide="external-link" style="width:11px;height:11px;opacity:.5;margin-left:auto"></i>
+            </button>
+          </div>
+          <p class="waze-note"><i data-lucide="info" style="width:10px;height:10px;flex-shrink:0"></i> Waze: abre destino final. Adicione paradas manualmente no app.</p>
+        </div>
+
+        <!-- Exportar Arquivos -->
+        <div class="export-group">
+          <h4 class="export-title">
+            <i data-lucide="share-2"></i>
+            Exportar Arquivos
+          </h4>
+          <div class="export-buttons">
+            <button class="btn btn--export" id="exportXlsxBtn" title="Exportar planilha Excel">
+              <i data-lucide="file-spreadsheet"></i>
+              Excel
+            </button>
+            <button class="btn btn--export" id="exportPdfBtn" title="Exportar PDF">
+              <i data-lucide="file-text"></i>
+              PDF
+            </button>
+            <button class="btn btn--export" id="exportCsvBtn" title="Exportar CSV">
+              <i data-lucide="table"></i>
+              CSV
+            </button>
+            <button class="btn btn--export" id="copyRouteBtn" title="Copiar rota">
+              <i data-lucide="copy"></i>
+              Copiar
+            </button>
+          </div>
+        </div>
+
+      </section>
+
+    </aside>
+
+    <!-- ========== PAINEL PRINCIPAL: MAPA + DIREÇÕES ========== -->
+    <div class="main-panel">
+
+      <!-- MAPA -->
+      <div id="map" class="map-container">
+        <!-- Placeholder exibido antes da API carregar -->
+        <div class="map-placeholder" id="mapPlaceholder">
+          <i data-lucide="map" class="map-placeholder-icon"></i>
+          <p>Insira sua <strong>API Key</strong> do Google Maps no arquivo <code>app.js</code> para carregar o mapa.</p>
+          <p class="map-placeholder-sub">Linha 3 — <code>const GOOGLE_MAPS_API_KEY = "SUA_CHAVE_AQUI";</code></p>
+        </div>
+      </div>
+
+      <!-- DIREÇÕES PASSO A PASSO -->
+      <div id="directionsPanel" class="directions-panel hidden">
+        <div class="directions-header">
+          <h3>
+            <i data-lucide="list-ordered"></i>
+            Direções Detalhadas
+          </h3>
+          <button class="directions-toggle" id="directionsToggleBtn">
+            <i data-lucide="chevron-down"></i>
+          </button>
+        </div>
+        <div id="directionsSteps" class="directions-steps"></div>
+      </div>
+
+    </div>
+  </main>
+
+  <!-- ==================== API KEY NOTICE (pode remover após configurar) ==================== -->
+  <div id="apiKeyNotice" class="api-notice">
+    <i data-lucide="key"></i>
+    <span>Configure sua API Key do Google Maps no arquivo <strong>app.js</strong> (linha 3) para ativar o sistema completo.</span>
+    <button onclick="document.getElementById('apiKeyNotice').remove()">
+      <i data-lucide="x"></i>
+    </button>
+  </div>
+
+  <!-- ==================== MODAL: ESCOLHER APP DE NAVEGAÇÃO ==================== -->
+  <div id="navModal" class="nav-modal-overlay hidden">
+    <div class="nav-modal">
+      <div class="nav-modal-header">
+        <h2 class="nav-modal-title">
+          <i data-lucide="navigation-2"></i>
+          Abrir Navegação
+        </h2>
+        <button class="nav-modal-close" id="navModalClose">
+          <i data-lucide="x"></i>
+        </button>
+      </div>
+
+      <p class="nav-modal-sub">Escolha o aplicativo de navegação</p>
+
+      <div class="nav-modal-apps">
+
+        <!-- Google Maps -->
+        <button class="nav-modal-app-btn" id="modalGmapsBtn">
+          <div class="nav-modal-app-icon gmaps-icon">
+            <svg viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg" width="32" height="32">
+              <path d="M24 4C15.163 4 8 11.163 8 20c0 12 16 28 16 28s16-16 16-28c0-8.837-7.163-16-16-16z" fill="#EA4335"/>
+              <path d="M24 4C15.163 4 8 11.163 8 20c0 4.1 1.54 7.84 4.07 10.72L28.72 7.07A15.92 15.92 0 0 0 24 4z" fill="#FBBC04"/>
+              <circle cx="24" cy="20" r="6" fill="#fff"/>
+              <circle cx="24" cy="20" r="4" fill="#1A73E8"/>
+            </svg>
+          </div>
+          <div class="nav-modal-app-info">
+            <strong>Google Maps</strong>
+            <span>Rota completa com todas as paradas</span>
+          </div>
+          <i data-lucide="arrow-right"></i>
+        </button>
+
+        <!-- Waze -->
+        <button class="nav-modal-app-btn" id="modalWazeBtn">
+          <div class="nav-modal-app-icon waze-icon">
+            <svg viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg" width="32" height="32">
+              <circle cx="24" cy="22" r="18" fill="#33CCFF"/>
+              <ellipse cx="24" cy="24" rx="14" ry="13" fill="#fff"/>
+              <circle cx="20" cy="22" r="2" fill="#333"/>
+              <circle cx="28" cy="22" r="2" fill="#333"/>
+              <path d="M20 28 Q24 32 28 28" stroke="#333" stroke-width="2" fill="none" stroke-linecap="round"/>
+              <circle cx="31" cy="13" r="3" fill="#FF6600"/>
+              <line x1="29" y1="15" x2="27" y2="18" stroke="#FF6600" stroke-width="2"/>
+            </svg>
+          </div>
+          <div class="nav-modal-app-info">
+            <strong>Waze</strong>
+            <span>Navegação com tráfego em tempo real</span>
+          </div>
+          <i data-lucide="arrow-right"></i>
+        </button>
+
+        <!-- Google Maps (apenas destino — fallback simples) -->
+        <button class="nav-modal-app-btn nav-modal-app-btn--secondary" id="modalGmapsSimpleBtn">
+          <div class="nav-modal-app-icon gmaps-simple-icon">
+            <i data-lucide="map-pin" style="color:#EA4335;width:22px;height:22px"></i>
+          </div>
+          <div class="nav-modal-app-info">
+            <strong>Google Maps (só destino)</strong>
+            <span>Ir direto ao destino final sem paradas</span>
+          </div>
+          <i data-lucide="arrow-right"></i>
+        </button>
+      </div>
+
+      <!-- Informação sobre paradas no Waze -->
+      <div class="nav-modal-info">
+        <i data-lucide="alert-circle"></i>
+        <p><strong>Sobre paradas no Waze:</strong> O Waze não aceita múltiplas paradas via link externo. Será aberto no destino final — adicione as paradas manualmente dentro do app após abrir.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== SCRIPTS ==================== -->
+  <script src="app.js"></script>
+
+</body>
+</html>

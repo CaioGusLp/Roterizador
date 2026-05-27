@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Premiatta - Roteirização de Pedidos</title>
-    <link rel="icon" href="assets/premiatta-logo.svg" type="image/svg+xml">
     
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -325,25 +324,10 @@
             .btn-outline, .btn-view, .btn-mini, .action-btn { width: 100%; }
         }
     </style>
-</head>
-<body class="no-data-mode">
-    <div id="loadingOverlay" class="loading-overlay">
-        <div class="loading-box">
-            <img id="loadingLogoImg" src="assets/premiatta-logo.svg" alt="Premiatta" class="loading-logo-img">
-            <h1 class="loading-title">BEM VINDO AO SISTEMA PREMIATTA</h1>
-            <p class="loading-sub">Iniciando painel de roteirização — aguarde alguns instantes</p>
-            <div class="loading-spinner" aria-hidden="true"></div>
-        </div>
-    </div>
-
-   <header>
+    </head>
+    <body>
+       <header>
         <div class="header-brand">
-            <div class="logo-wrap">
-                <div class="logo-crown" aria-hidden="true">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="36" height="18" viewBox="0 0 100 40" preserveAspectRatio="xMidYMid meet"><path d="M5 30 L20 8 L30 28 L45 6 L55 28 L70 8 L85 30 L5 30 Z" fill="#E5C100"/></svg>
-                </div>
-                <img src="assets/premiatta-logo.svg" alt="Premiatta" class="header-logo">
-            </div>
             <div class="header-title">
                 <div class="title-row">
                     <h1>DASHBOARD - LOGÍSTICA & ROTEIRIZAÇÃO</h1>
@@ -520,32 +504,7 @@
         let lastMapDurationText = 'Nao calculado';
         let routeMarkers = [];
 
-        function hideLoadingOverlay() {
-            const overlay = document.getElementById('loadingOverlay');
-            if (!overlay) return;
-            overlay.classList.add('fade-out');
-            setTimeout(() => { if(overlay.parentNode) overlay.parentNode.removeChild(overlay); }, 700);
-        }
-
-        function enterNoDataMode() {
-            document.body.classList.add('no-data-mode');
-        }
-
-        function exitNoDataMode() {
-            document.body.classList.remove('no-data-mode');
-        }
-
-        const loadingStart = Date.now();
-        const minLoadingMs = 2000; // mínimo de exibição do splash (2s)
-
-        window.addEventListener('load', function() {
-            const elapsed = Date.now() - loadingStart;
-            const wait = Math.max(0, minLoadingMs - elapsed);
-            setTimeout(hideLoadingOverlay, wait);
-        });
-
-        // Fallback: garante que o overlay seja removido após o tempo mínimo
-        setTimeout(function() { const overlay = document.getElementById('loadingOverlay'); if (overlay) hideLoadingOverlay(); }, minLoadingMs + 500);
+        
 
         function initMap() {
             if(typeof google === 'undefined') return;
@@ -595,7 +554,6 @@
             if(!confirm("Atenção: Ao carregar uma nova planilha, perderá o histórico de rotas atual. Deseja continuar?")) return;
             rawData = []; selectedOrdersIds.clear(); finalizedOrdersIds.clear(); routesHistory = []; updateCartUI(); mapNeedsUpdate = true;
             document.getElementById('fileInput').value = ""; document.getElementById('dashboardContent').style.display = 'none'; document.getElementById('emptyState').style.display = 'block'; document.getElementById('btnLimpar').style.display = 'none'; document.getElementById('btnHistory').style.display = 'none';
-            enterNoDataMode();
         }
         function clearCart() { if(confirm("Deseja cancelar o planeamento desta rota e limpar o carrinho?")) { selectedOrdersIds.clear(); updateCartUI(); updateDashboard(); mapNeedsUpdate = true; } }
         function closeModal(modalId, e) {
@@ -681,7 +639,6 @@
                     buildMultiSelect('listRegiao', regioesSet); buildMultiSelect('listVendedor', vendedoresSet); buildMultiSelect('listCidade', cidadesSet);
                     document.getElementById('emptyState').style.display = 'none'; document.getElementById('dashboardContent').style.display = 'block';
                     document.getElementById('btnLimpar').style.display = 'flex'; document.getElementById('btnHistory').style.display = 'flex';
-                    exitNoDataMode();
                     updateDashboard();
 
                 } catch (error) { alert("Erro ao ler planilha: " + error.message); }

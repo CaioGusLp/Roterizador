@@ -230,9 +230,14 @@
         .main-footer strong { color: var(--primary); font-weight: 700; }
 
         .loading-overlay { position: fixed; inset: 0; z-index: 2000; background: #000; display: flex; justify-content: center; align-items: center; color: #fff; font-family: inherit; }
-        .loading-box { text-align: center; padding: 32px 24px; }
-        .loading-logo { display: inline-block; font-size: 3rem; font-weight: 900; color: #E5C100; letter-spacing: 0.2em; margin-bottom: 18px; text-transform: uppercase; }
-        .loading-box p { margin: 0; color: #e5e5e5; font-size: 1rem; letter-spacing: 0.05em; }
+        .loading-overlay.fade-out { opacity: 0; transition: opacity 0.6s ease; pointer-events: none; }
+        .loading-box { text-align: center; padding: 28px 20px; background: transparent; }
+        .loading-logo-img { display: block; max-width: 260px; width: 60%; height: auto; margin: 0 auto 14px auto; filter: drop-shadow(0 6px 18px rgba(0,0,0,0.6)); }
+        .loading-title { margin: 0 0 8px 0; font-size: 1.15rem; color: var(--primary); font-weight: 800; letter-spacing: 0.08em; }
+        .loading-sub { margin: 0 0 18px 0; color: #d7d7d7; font-size: 0.95rem; }
+        .loading-box p { margin: 0; }
+        .loading-spinner { width: 56px; height: 56px; margin: 8px auto 0; border-radius: 50%; border: 6px solid rgba(255,255,255,0.08); border-top-color: var(--primary); animation: spin 1s linear infinite; box-shadow: 0 6px 24px rgba(229,193,0,0.08); }
+        @keyframes spin { to { transform: rotate(360deg); } }
         body.no-data-mode .cart-floating-bar, body.no-data-mode footer, body.no-data-mode .modal-overlay { display: none !important; }
 
         @media (max-width: 900px) {
@@ -315,8 +320,10 @@
 <body class="no-data-mode">
     <div id="loadingOverlay" class="loading-overlay">
         <div class="loading-box">
-            <div class="loading-logo">PREMIATTA</div>
-            <p>Carregando plataforma de roteirização...</p>
+            <img id="loadingLogoImg" src="assets/premiatta-logo.svg" alt="Premiatta" class="loading-logo-img">
+            <h1 class="loading-title">BEM VINDO AO SISTEMA PREMIATTA</h1>
+            <p class="loading-sub">Iniciando painel de roteirização — aguarde alguns instantes</p>
+            <div class="loading-spinner" aria-hidden="true"></div>
         </div>
     </div>
 
@@ -500,7 +507,9 @@
 
         function hideLoadingOverlay() {
             const overlay = document.getElementById('loadingOverlay');
-            if (overlay) overlay.style.display = 'none';
+            if (!overlay) return;
+            overlay.classList.add('fade-out');
+            setTimeout(() => { if(overlay.parentNode) overlay.parentNode.removeChild(overlay); }, 700);
         }
 
         function enterNoDataMode() {

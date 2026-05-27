@@ -241,9 +241,12 @@
         @keyframes spin { to { transform: rotate(360deg); } }
 
         /* Header logo */
-        .header { display:flex; align-items:center; justify-content:space-between; padding: 18px 28px; gap: 12px; }
+        .header { display:flex; align-items:center; justify-content:flex-start; padding: 18px 28px; gap: 12px; }
         .header-brand { display:flex; align-items:center; gap:12px; }
+        .logo-wrap { position: relative; display: inline-block; }
+        .logo-crown { position: absolute; top: -14px; left: 50%; transform: translateX(-50%); width: 48px; height: 24px; display:flex; align-items:center; justify-content:center; }
         .header-logo { height:64px; width:auto; display:block; }
+        .header-controls { margin-left: auto; display:flex; gap:12px; align-items:center; }
         body.no-data-mode .cart-floating-bar, body.no-data-mode footer, body.no-data-mode .modal-overlay { display: none !important; }
 
         @media (max-width: 900px) {
@@ -335,7 +338,12 @@
 
    <header>
         <div class="header-brand">
-            <img src="assets/premiatta-logo.svg" alt="Premiatta" class="header-logo">
+            <div class="logo-wrap">
+                <div class="logo-crown" aria-hidden="true">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="36" height="18" viewBox="0 0 100 40" preserveAspectRatio="xMidYMid meet"><path d="M5 30 L20 8 L30 28 L45 6 L55 28 L70 8 L85 30 L5 30 Z" fill="#E5C100"/></svg>
+                </div>
+                <img src="assets/premiatta-logo.svg" alt="Premiatta" class="header-logo">
+            </div>
             <div class="header-title">
                 <div class="title-row">
                     <h1>DASHBOARD - LOGÍSTICA & ROTEIRIZAÇÃO</h1>

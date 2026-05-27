@@ -204,6 +204,7 @@
 
         .history-card { background: var(--bg-input); border: 1px solid var(--border-light); padding: 20px; border-radius: var(--radius-md); margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 20px; transition: 0.3s;}
         .history-card:hover { border-color: rgba(229, 193, 0, 0.3); background: #15151e;}
+        .history-details { flex: 1; min-width: 280px; }
         .history-details h3 { margin: 0 0 8px 0; color: var(--primary); font-size: 1.2rem; font-weight: 700;}
         .history-details p { margin: 0; color: var(--text-muted); font-size: 0.9rem; line-height: 1.5;}
         .history-actions { display: flex; gap: 10px; flex-wrap: wrap;}
@@ -212,6 +213,7 @@
         .btn-mini-excel { background: rgba(33, 115, 70, 0.1); color: #4da674; border: 1px solid rgba(33, 115, 70, 0.2);} .btn-mini-excel:hover{ background: #217346; color:#fff; }
         .btn-mini-edit { background: rgba(229, 193, 0, 0.1); color: var(--primary); border: 1px solid rgba(229, 193, 0, 0.2);} .btn-mini-edit:hover{ background: var(--primary); color: #000; }
         .btn-mini-delete { background: transparent; color: var(--text-muted); border: 1px solid var(--border-color); } .btn-mini-delete:hover{ background: rgba(255, 77, 77, 0.1); color: var(--danger); border-color: var(--danger); }
+        .history-map { width: 100%; height: 260px; border-radius: var(--radius-sm); overflow: hidden; border: 1px solid var(--border-light); background: #1a1a24; }
 
         /* --- CARRINHO FLUTUANTE DE ROTA --- */
         .cart-floating-bar { position: fixed; bottom: -120px; left: 50%; transform: translateX(-50%); width: 90%; max-width: 1400px; background: rgba(26, 26, 36, 0.95); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border: 1px solid rgba(229, 193, 0, 0.3); color: var(--text-main); padding: 20px 40px; border-radius: var(--radius-lg) var(--radius-lg) 0 0; box-shadow: 0 -10px 40px rgba(0,0,0,0.6), 0 0 20px rgba(229, 193, 0, 0.1); display: flex; justify-content: space-between; align-items: center; transition: bottom 0.5s cubic-bezier(0.16, 1, 0.3, 1); z-index: 900; }
@@ -424,7 +426,6 @@
                 <h2 style="color: var(--success); font-size: 2.2rem; margin-bottom: 15px; font-weight: 800;">Rota Salva com Sucesso!</h2>
                 <p style="color: var(--text-muted); font-size: 1.1rem; margin-bottom: 40px;">Os pedidos foram movidos para o Histórico.<br>Escolha o formato abaixo para exportar os ficheiros desta carga:</p>
                 <div style="display: flex; flex-wrap:wrap; gap: 20px; justify-content: center; margin-bottom: 50px;">
-                    <button class="btn-export btn-map-action" id="btnExportSuccessRoutePDF" style="width: auto; padding: 16px 30px;">Mapa da Rota (PDF)</button>
                     <button class="btn-export btn-pdf" id="btnExportSuccessPDF" style="width: auto; padding: 16px 30px;">📄 Exportar Romaneio (PDF)</button>
                     <button class="btn-export btn-excel" id="btnExportSuccessExcel" style="width: auto; padding: 16px 30px;">📊 Exportar Faturamento (Excel)</button>
                 </div>
@@ -470,7 +471,7 @@
             </div>
             <div style="text-align: right; margin-top: 15px; display: flex; justify-content: flex-end; gap: 12px; flex-wrap: wrap;">
                 <button class="cart-btn" onclick="openRouteInGoogleMaps()" style="padding: 10px 25px; background: #2d8cff; color: #fff;">Abrir no Google Maps</button>
-                <button class="cart-btn" onclick="openRouteInWaze()" style="padding: 10px 25px; background: #3399ff; color: #fff;">Abrir no Waze</button>
+                <button class="cart-btn" onclick="openRouteInWaze()" style="padding: 10px 25px; background: #3399ff; color: #fff;">Abrir Próxima no Waze</button>
                 <button class="cart-btn" id="mapSaveBtn" onclick="saveMapOrderAndClose()" style="padding: 10px 25px;">Aplicar Esta Rota</button>
             </div>
         </div>
@@ -503,6 +504,7 @@
         let lastMapDistanceText = 'Nao calculada';
         let lastMapDurationText = 'Nao calculado';
         let routeMarkers = [];
+        let lastDirectionsResponse = null;
 
         
 
@@ -533,7 +535,7 @@
 
             map = new google.maps.Map(document.getElementById("mapContainer"), {
                 zoom: 8, center: { lat: -22.368, lng: -46.944 }, backgroundColor: '#1a1a24', mapTypeId: 'roadmap',
-                styles: darkMapStyle, disableDefaultUI: true, zoomControl: false, gestureHandling: 'none', disableDoubleClickZoom: true, streetViewControl: false, fullscreenControl: false
+                styles: darkMapStyle, disableDefaultUI: true, zoomControl: true, gestureHandling: 'greedy', disableDoubleClickZoom: false, streetViewControl: false, fullscreenControl: true
             });
             directionsRenderer.setMap(map);
             isMapInitialized = true;
@@ -897,6 +899,7 @@
                 travelMode: google.maps.TravelMode.DRIVING
             }, (response, status) => {
                 if (status === "OK") {
+                    lastDirectionsResponse = response;
                     directionsRenderer.setDirections(response);
                     map.fitBounds(response.routes[0].bounds);
                     renderRouteMarkers(response);
@@ -994,11 +997,21 @@
                 alert('A rota não está definida. Adicione pelo menos uma parada.');
                 return;
             }
-            const origin = document.getElementById('mapOrigin').value;
-            const destination = document.getElementById('mapDestination').value;
-            const waypointString = currentMapWaypoints.map(wp => wp.address || wp.label).join(' | ');
-            const q = [origin, waypointString, destination].filter(Boolean).join(' | ');
-            const url = `https://www.waze.com/ul?q=${encodeURIComponent(q)}&navigate=yes`;
+
+            const firstStop = currentMapWaypoints[0];
+            let url = '';
+
+            if(lastDirectionsResponse && lastDirectionsResponse.routes && lastDirectionsResponse.routes[0] && lastDirectionsResponse.routes[0].legs && lastDirectionsResponse.routes[0].legs[0]) {
+                const nextLocation = lastDirectionsResponse.routes[0].legs[0].end_location;
+                url = `https://www.waze.com/ul?ll=${nextLocation.lat()},${nextLocation.lng()}&navigate=yes`;
+            } else {
+                const q = firstStop.address || firstStop.label;
+                url = `https://www.waze.com/ul?q=${encodeURIComponent(q)}&navigate=yes`;
+            }
+
+            if(currentMapWaypoints.length > 1) {
+                alert('O Waze abre uma parada por vez. Vou abrir a próxima parada da rota.');
+            }
             window.open(url, '_blank');
         }
 
@@ -1076,7 +1089,6 @@
             
             document.getElementById('reviewStep1').style.display = 'none'; document.getElementById('reviewStep2').style.display = 'block';
             document.getElementById('btnExportSuccessPDF').onclick = function() { reExportPDF(routeRecord.id); };
-            document.getElementById('btnExportSuccessRoutePDF').onclick = function() { reExportRouteImagePDF(routeRecord.id); };
             document.getElementById('btnExportSuccessExcel').onclick = function() { reExportExcel(routeRecord.id); };
         }
 
@@ -1090,11 +1102,56 @@
                     let fDateOut = route.dateOut;
                     if(fDateOut && fDateOut.includes('-')) { let p = fDateOut.split('-'); fDateOut = `${p[2]}/${p[1]}/${p[0]}`; }
 
-                    html += `<div class="history-card"><div class="history-details"><h3>🚗 ${route.name}</h3><p>Saída Prevista: ${fDateOut} | Criada em: ${route.date}</p><p style="margin-top: 8px; color: var(--text-main);"><strong>${route.qty} Pedidos</strong> | Peso: ${route.totalWeight.toLocaleString('pt-BR')} kg | Val: ${route.totalValue.toLocaleString('pt-BR', {style:'currency', currency:'BRL'})}</p></div><div class="history-actions"><button class="btn-mini btn-mini-edit" style="background:#3399ff; color:#fff; border:none;" onclick="openMapModal(${route.id})">🗺️ Ver Mapa</button><button class="btn-mini btn-mini-edit" onclick="reExportRouteImagePDF(${route.id})">Mapa PDF</button><button class="btn-mini btn-mini-pdf" onclick="reExportPDF(${route.id})">📄 PDF</button><button class="btn-mini btn-mini-excel" onclick="reExportExcel(${route.id})">📊 Excel</button><button class="btn-mini btn-mini-edit" onclick="editRoute(${route.id})">✏️ Editar</button><button class="btn-mini btn-mini-delete" onclick="deleteRoute(${route.id})">🗑️ Excluir</button></div></div>`;
+                    html += `<div class="history-card"><div class="history-details"><h3>🚗 ${route.name}</h3><p>Saída Prevista: ${fDateOut} | Criada em: ${route.date}</p><p style="margin-top: 8px; color: var(--text-main);"><strong>${route.qty} Pedidos</strong> | Peso: ${route.totalWeight.toLocaleString('pt-BR')} kg | Val: ${route.totalValue.toLocaleString('pt-BR', {style:'currency', currency:'BRL'})}</p></div><div class="history-actions"><button class="btn-mini btn-mini-edit" style="background:#3399ff; color:#fff; border:none;" onclick="openMapModal(${route.id})">🗺️ Ver Mapa</button><button class="btn-mini btn-mini-pdf" onclick="reExportPDF(${route.id})">📄 PDF</button><button class="btn-mini btn-mini-excel" onclick="reExportExcel(${route.id})">📊 Excel</button><button class="btn-mini btn-mini-edit" onclick="editRoute(${route.id})">✏️ Editar</button><button class="btn-mini btn-mini-delete" onclick="deleteRoute(${route.id})">🗑️ Excluir</button></div><div class="history-map" id="historyMap_${route.id}"><div style="display:flex; align-items:center; justify-content:center; height:100%; color:var(--text-muted);">Carregando mapa...</div></div></div>`;
                 });
                 container.innerHTML = html;
             }
             document.getElementById('historyModal').style.display = 'flex';
+            setTimeout(renderHistoryMaps, 80);
+        }
+
+        function renderHistoryMaps() {
+            if(typeof google === 'undefined' || routesHistory.length === 0) return;
+            [...routesHistory].reverse().forEach(route => {
+                const mapEl = document.getElementById(`historyMap_${route.id}`);
+                if(!mapEl || mapEl.dataset.loaded === 'true') return;
+                mapEl.dataset.loaded = 'true';
+
+                const previewMap = new google.maps.Map(mapEl, {
+                    zoom: 8,
+                    center: { lat: -22.368, lng: -46.944 },
+                    backgroundColor: '#1a1a24',
+                    mapTypeId: 'roadmap',
+                    disableDefaultUI: true,
+                    zoomControl: true,
+                    gestureHandling: 'greedy',
+                    fullscreenControl: true
+                });
+                const previewRenderer = new google.maps.DirectionsRenderer({
+                    map: previewMap,
+                    suppressMarkers: false,
+                    polylineOptions: { strokeColor: '#E5C100', strokeWeight: 5, strokeOpacity: 0.85 }
+                });
+                const previewService = new google.maps.DirectionsService();
+                const waypoints = (route.mapWaypoints || []).map(wp => ({
+                    location: wp.address || wp.label,
+                    stopover: true
+                }));
+
+                previewService.route({
+                    origin: route.mapOrigin,
+                    destination: route.mapDestination,
+                    waypoints: waypoints,
+                    optimizeWaypoints: false,
+                    travelMode: google.maps.TravelMode.DRIVING
+                }, (response, status) => {
+                    if(status === 'OK') {
+                        previewRenderer.setDirections(response);
+                    } else {
+                        mapEl.innerHTML = '<div style="display:flex; align-items:center; justify-content:center; height:100%; color:var(--text-muted); padding:20px; text-align:center;">Mapa indisponivel para esta rota.</div>';
+                    }
+                });
+            });
         }
 
         function deleteRoute(id) {

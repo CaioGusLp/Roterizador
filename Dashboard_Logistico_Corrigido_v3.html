@@ -1,0 +1,1251 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Premiatta - Roteirização de Pedidos</title>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBr_Fxqxt7jDRYtJaRXl_9DYvJqdzZkq_o&libraries=maps,marker,places&v=beta" defer></script>
+    
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+    <script src="https://unpkg.com/xlsx/dist/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
+    
+    <style>
+        /* --- PALETA DE CORES PREMIUM & VARIÁVEIS --- */
+        :root {
+            --primary: #E5C100; 
+            --primary-hover: #F2D22E;
+            --primary-glow: rgba(229, 193, 0, 0.25);
+            
+            --bg-body: #0a0a0f; 
+            --bg-card: #1a1a24; 
+            --bg-hover: #252533; 
+            --bg-input: #12121a;
+            
+            --text-main: #f0f0f5;
+            --text-muted: #8b8b9e;
+            
+            --border-color: #2a2a35;
+            --border-light: rgba(255,255,255,0.08);
+            
+            --danger: #ff4d4d;        
+            --warning: #ffb84d;       
+            --success: #00cc66;       
+            --blue: #3399ff;
+            
+            --shadow-sm: 0 4px 12px rgba(0, 0, 0, 0.3);
+            --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.5);
+            --shadow-lg: 0 16px 40px rgba(0, 0, 0, 0.7);
+            --shadow-glow: 0 0 20px var(--primary-glow);
+            
+            --radius-sm: 8px;
+            --radius-md: 14px;
+            --radius-lg: 20px;
+        }
+
+        /* --- RESET E TIPOGRAFIA --- */
+        * { box-sizing: border-box; }
+        body { font-family: 'Inter', sans-serif; background-color: var(--bg-body); color: var(--text-main); margin: 0; padding: 0; min-height: 100vh; display: flex; flex-direction: column; letter-spacing: -0.01em;}
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: var(--bg-body); }
+        ::-webkit-scrollbar-thumb { background: #3a3a4a; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #4a4a5a; }
+
+        @keyframes fadeInUp { 0% { opacity: 0; transform: translateY(20px); } 100% { opacity: 1; transform: translateY(0); } }
+        .fade-in-up { opacity: 0; animation: fadeInUp 0.4s ease-out forwards; }
+
+        /* --- HEADER --- */
+        header { background: rgba(26, 26, 36, 0.85); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border-bottom: 1px solid rgba(229, 193, 0, 0.2); padding: 18px 40px; display: flex; justify-content: space-between; align-items: center; box-shadow: var(--shadow-sm); position: sticky; top: 0; z-index: 1000; }
+        .header-brand { display: flex; align-items: center; gap: 20px; }
+        .header-title { display: flex; flex-direction: column; justify-content: center; }
+        .title-row { display: flex; align-items: center; gap: 12px; }
+        .header-title h1 { margin: 0; font-size: 1.4rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; color: var(--primary); }
+        .version-badge { font-size: 0.7rem; color: var(--bg-body); background-color: var(--primary); padding: 3px 8px; border-radius: 20px; font-weight: 700; letter-spacing: 0.05em; box-shadow: var(--shadow-glow);}
+        .header-title span.subtitle { font-size: 0.85rem; color: var(--text-muted); margin-top: 4px; font-weight: 400; }
+        
+        .header-controls { display: flex; align-items: center; gap: 15px; }
+        .action-btn { padding: 12px 24px; border-radius: var(--radius-sm); font-weight: 600; font-size: 0.9rem; cursor: pointer; border: none; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); display: flex; align-items: center; gap: 8px; }
+        .upload-btn { background-color: var(--primary); color: #000; box-shadow: var(--shadow-glow); }
+        .upload-btn:hover { background-color: var(--primary-hover); transform: translateY(-2px); box-shadow: 0 6px 20px rgba(229, 193, 0, 0.4); }
+        .history-btn { background-color: rgba(255,255,255,0.05); color: var(--text-main); border: 1px solid var(--border-light); display: none; }
+        .history-btn:hover { background-color: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.2); }
+        .clear-btn { background-color: transparent; color: var(--danger); border: 1px solid rgba(255, 77, 77, 0.3); display: none; }
+        .clear-btn:hover { background-color: rgba(255, 77, 77, 0.1); border-color: var(--danger); }
+        .hidden-input { position: absolute; top: 0; left: 0; width: 0; height: 0; opacity: 0; cursor: pointer; }
+
+        /* --- CONTEÚDO --- */
+        .main-container { padding: 40px 50px 140px 50px; flex-grow: 1; max-width: 1800px; margin: 0 auto; width: 100%; }
+        .state-message { text-align: center; padding: 80px 40px; color: var(--text-muted); background: var(--bg-card); border-radius: var(--radius-md); border: 1px dashed var(--border-color); margin-top: 20px; box-shadow: var(--shadow-sm); }
+        .state-message h2 { color: var(--text-main); font-weight: 500; font-size: 1.5rem; margin-bottom: 10px;}
+
+        /* --- MULTI-SELECT --- */
+        .filter-bar { background: var(--bg-card); padding: 20px 30px; border-radius: var(--radius-md); margin-bottom: 30px; border: 1px solid var(--border-light); display: flex; gap: 20px; flex-wrap: wrap; box-shadow: var(--shadow-sm); position: relative; z-index: 200; }
+        .filter-group { display: flex; flex-direction: column; gap: 8px; min-width: 250px; flex: 1; position: relative; }
+        .filter-label { font-size: 0.75rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; }
+        .multi-select { position: relative; width: 100%; }
+        .select-btn { background-color: var(--bg-input); color: var(--text-main); border: 1px solid var(--border-color); padding: 12px 18px; border-radius: var(--radius-sm); font-size: 0.9rem; font-weight: 500; width: 100%; text-align: left; cursor: pointer; display: flex; justify-content: space-between; align-items: center; min-height: 46px; transition: 0.2s;}
+        .select-btn:hover { border-color: var(--primary); }
+        .select-btn::after { content: '▼'; font-size: 0.6rem; color: var(--text-muted); }
+        .list-items { display: none; position: absolute; top: 100%; left: 0; width: 100%; background-color: var(--bg-card); border: 1px solid var(--border-light); border-radius: var(--radius-sm); margin-top: 8px; max-height: 280px; overflow-y: auto; z-index: 50; box-shadow: var(--shadow-lg); }
+        .multi-select.open .list-items { display: block; animation: slideDown 0.2s ease forwards; transform-origin: top;}
+        @keyframes slideDown { from {opacity:0; transform: scaleY(0.95);} to {opacity:1; transform: scaleY(1);} }
+        .item { display: flex; align-items: center; padding: 12px 18px; cursor: pointer; border-bottom: 1px solid rgba(255,255,255,0.03); font-size: 0.85rem; font-weight: 500; transition: 0.2s; }
+        .item:hover { background-color: var(--bg-hover); }
+        .item input[type="checkbox"] { margin-right: 12px; accent-color: var(--primary); width: 18px; height: 18px; cursor: pointer; }
+        .item.all-check { background-color: var(--bg-input); font-weight: 700; color: var(--primary); position: sticky; top: 0; z-index: 2; border-bottom: 1px solid var(--border-color); }
+
+        /* --- KPIs GRID --- */
+        .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-bottom: 30px; position: relative; z-index: 10;}
+        .kpi-card { background: linear-gradient(145deg, var(--bg-card) 0%, #161620 100%); border: 1px solid var(--border-light); padding: 25px; border-radius: var(--radius-md); position: relative; overflow: hidden; display: flex; flex-direction: column; justify-content: center; box-shadow: var(--shadow-sm); transition: transform 0.3s; }
+        .kpi-card:hover { transform: translateY(-4px); box-shadow: var(--shadow-md); border-color: rgba(255,255,255,0.15);}
+        .kpi-card::before { content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 3px; background-color: var(--primary); box-shadow: 0 0 10px var(--primary); opacity: 0.8;}
+        .kpi-blue::before { background-color: var(--blue); box-shadow: 0 0 10px var(--blue);}
+        .kpi-warning::before { background-color: var(--warning); box-shadow: 0 0 10px var(--warning);}
+        .kpi-success::before { background-color: var(--success); box-shadow: 0 0 10px var(--success);}
+        .kpi-label { font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; margin-bottom: 10px; font-weight: 700; letter-spacing: 0.05em; }
+        .kpi-value { font-size: 2.2rem; font-weight: 800; color: var(--text-main); letter-spacing: -0.02em;}
+        .kpi-blue .kpi-value { color: #80c4ff; }
+        .kpi-warning .kpi-value { color: #ffd699; }
+        .kpi-success .kpi-value { color: #66e0a3; }
+
+        /* --- CHARTS --- */
+        .charts-row { display: grid; grid-template-columns: 1fr 1fr; gap: 25px; margin-bottom: 50px; position: relative; z-index: 10;}
+        .chart-card { background: linear-gradient(180deg, var(--bg-card) 0%, rgba(26,26,36,0.5) 100%); border: 1px solid var(--border-light); border-radius: var(--radius-md); padding: 25px; box-shadow: var(--shadow-sm); height: 380px; display: flex; flex-direction: column; transition: transform 0.3s; }
+        .chart-card:hover { transform: translateY(-4px); box-shadow: var(--shadow-md);}
+        .chart-header { margin-bottom: 20px; padding-bottom: 15px; border-bottom: 1px solid rgba(255,255,255,0.05); }
+        .chart-title { font-size: 1.1rem; font-weight: 600; color: var(--text-main); margin: 0; }
+        .chart-canvas-container { position: relative; width: 100%; height: 100%; overflow: hidden; flex-grow: 1; }
+        @media (max-width: 900px) { .charts-row { grid-template-columns: 1fr; } }
+
+        /* --- ROUTE CARDS --- */
+        .chart-header-title { border-bottom: 1px solid var(--border-light); margin-bottom: 25px; padding-bottom: 10px; display: flex; justify-content: space-between; align-items: flex-end; }
+        .route-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 25px; }
+        .route-card { background: linear-gradient(145deg, var(--bg-card) 0%, #13131a 100%); border: 1px solid var(--border-light); border-radius: var(--radius-md); padding: 22px; display: flex; flex-direction: column; box-shadow: var(--shadow-sm); transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1); position: relative; top: 0;}
+        .route-card:hover { top: -8px; border-color: rgba(229, 193, 0, 0.6); box-shadow: 0 20px 40px rgba(0,0,0,0.8), 0 0 20px rgba(229, 193, 0, 0.15); background: linear-gradient(145deg, #1d1d29 0%, #13131a 100%);}
+        .route-city { font-size: 1.15rem; font-weight: 800; color: #FFF; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 12px; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center;}
+        .city-name { width: 65%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer;}
+        .route-region-badge { font-size: 0.7rem; background: rgba(51, 153, 255, 0.1); border: 1px solid rgba(51, 153, 255, 0.2); color: var(--blue); padding: 4px 10px; border-radius: 20px; font-weight: 700; text-transform: uppercase; white-space: nowrap;}
+        .route-metric { display: flex; justify-content: space-between; align-items: center; font-size: 0.9rem; margin-bottom: 10px; color: var(--text-muted); cursor: pointer; font-weight: 500;}
+        .route-metric strong { color: var(--text-main); font-size: 1.05rem; font-weight: 600;}
+        .highlight-weight { color: var(--warning) !important; font-weight: 700 !important; }
+        .route-actions { margin-top: 15px; border-top: 1px dashed rgba(255,255,255,0.1); padding-top: 20px; display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+        
+        .btn-outline { background: transparent; border: 1px solid rgba(229, 193, 0, 0.4); color: var(--primary); padding: 8px 14px; border-radius: var(--radius-sm); cursor: pointer; font-size: 0.85rem; font-weight: 600; flex: 1; text-align: center; transition: 0.2s;}
+        .btn-outline:hover { background: rgba(229, 193, 0, 0.1); border-color: var(--primary); }
+        .btn-selected { background: rgba(229, 193, 0, 0.1); border: 1px solid var(--primary); color: var(--primary); padding: 8px 14px; border-radius: var(--radius-sm); font-size: 0.85rem; font-weight: 600; flex: 1; text-align: center; box-shadow: var(--shadow-glow);}
+        .btn-view { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: var(--text-main); padding: 8px 14px; border-radius: var(--radius-sm); cursor: pointer; font-size: 0.85rem; font-weight: 500; transition: 0.2s;}
+        .btn-view:hover { background: rgba(255,255,255,0.1); }
+        .btn-remove-row { background: transparent; color: var(--danger); border: 1px solid transparent; font-weight: bold; cursor: pointer; padding: 6px 10px; border-radius: 6px; font-size: 1rem; transition: 0.2s; }
+        .btn-remove-row:hover { background: rgba(255, 77, 77, 0.1); border-color: rgba(255, 77, 77, 0.3); }
+
+        /* --- MODALS --- */
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(5, 5, 8, 0.85); z-index: 1000; justify-content: center; align-items: center; backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);}
+        .modal-content { background: var(--bg-card); width: 95%; max-width: 1400px; border-radius: var(--radius-lg); border: 1px solid rgba(255,255,255,0.08); position: relative; max-height: 90vh; overflow-y: auto; box-shadow: 0 25px 60px rgba(0,0,0,0.8), 0 0 30px rgba(229, 193, 0, 0.05); animation: modalIn 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
+        @keyframes modalIn { from { transform: translateY(30px) scale(0.98); opacity: 0; } to { transform: translateY(0) scale(1); opacity: 1; } }
+        .modal-close { position: absolute; top: 20px; right: 25px; font-size: 2rem; color: var(--text-muted); background: transparent; border: none; cursor: pointer; transition: 0.2s; z-index: 10; font-weight: 300; line-height: 1;}
+        .modal-close:hover { color: var(--danger); transform: scale(1.1);}
+        
+        .table-responsive { overflow-x: auto; margin-top: 20px; max-height: 55vh; border-radius: var(--radius-sm); border: 1px solid var(--border-light);}
+        .orders-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; color: var(--text-main); }
+        .orders-table th { background: var(--bg-input); color: var(--text-muted); padding: 14px 16px; text-align: left; border-bottom: 1px solid var(--border-color); white-space: nowrap; position: sticky; top: 0; z-index: 5; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; font-size: 0.75rem;}
+        .orders-table td { padding: 14px 16px; border-bottom: 1px solid rgba(255,255,255,0.03); vertical-align: middle; font-weight: 500;}
+        .orders-table tbody tr:hover { background-color: rgba(255,255,255,0.02); }
+        .orders-table input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--primary); cursor: pointer;}
+        .badge-merged { background: rgba(156, 39, 176, 0.15); color: #e1bee7; border: 1px solid rgba(156, 39, 176, 0.3); padding: 4px 8px; border-radius: 6px; font-weight: 800; font-size: 0.75rem; white-space: nowrap; box-shadow: 0 0 10px rgba(156, 39, 176, 0.2); }
+
+        /* --- MAPA E DRAG AND DROP --- */
+        .map-layout { display: flex; height: 70vh; gap: 20px; border-top: 1px solid var(--border-light); padding-top: 20px; margin-top: 10px;}
+        .map-sidebar { width: 400px; display: flex; flex-direction: column; gap: 15px; border-right: 1px solid var(--border-light); padding-right: 15px; overflow-y: auto;}
+        .map-container-wrapper { flex: 1; border-radius: var(--radius-md); overflow: hidden; border: 1px solid var(--border-light); position: relative; background: #222;}
+        .draggable-item { background: var(--bg-input); border: 1px solid var(--border-color); padding: 12px 15px; border-radius: var(--radius-sm); display: flex; align-items: center; gap: 15px; cursor: grab; transition: background 0.2s;}
+        .draggable-item:hover { border-color: rgba(229, 193, 0, 0.5); }
+        .draggable-item:active { cursor: grabbing; }
+        .draggable-item.dragging { opacity: 0.5; background: var(--bg-hover); }
+        .drag-handle { color: var(--text-muted); cursor: grab; font-size: 1.2rem; }
+        .btn-remove-map { color: var(--danger); cursor: pointer; font-size: 1.2rem; font-weight: bold; background: none; border: none; padding: 0 5px; opacity: 0.7; transition: 0.2s; }
+        .btn-remove-map:hover { opacity: 1; transform: scale(1.1); }
+        
+        .map-header-kpi { display: flex; gap: 15px; background: rgba(0,0,0,0.4); padding: 15px; border-radius: var(--radius-sm); border: 1px solid var(--border-light);}
+        .map-kpi-box { flex: 1; text-align: center; }
+        .map-kpi-box span { font-size: 0.7rem; text-transform: uppercase; color: var(--primary); font-weight: 700;}
+        .map-kpi-box strong { display: block; font-size: 1.3rem; color: #fff; margin-top: 3px;}
+
+        /* --- TELA DE REVISÃO E EXPORTAÇÃO --- */
+        .review-header { display: flex; flex-wrap: wrap; gap: 20px; margin-bottom: 25px; background: rgba(0,0,0,0.2); padding: 25px; border-radius: var(--radius-md); border: 1px solid rgba(255,255,255,0.03);}
+        .review-input-group { display: flex; flex-direction: column; gap: 8px; flex: 1; min-width: 220px; }
+        .review-input-group label { font-size: 0.75rem; color: var(--primary); font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;}
+        .review-input-group input { background: var(--bg-input); border: 1px solid var(--border-color); color: #fff; padding: 14px 16px; border-radius: var(--radius-sm); font-size: 1rem; outline: none; transition: all 0.3s; font-family: inherit;}
+        .review-input-group input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(229, 193, 0, 0.15); }
+        
+        .export-actions { display: flex; flex-direction: column; gap: 15px; align-items: flex-end; margin-top: 25px; border-top: 1px solid var(--border-light); padding-top: 25px;}
+        .btn-export { padding: 14px 28px; border-radius: var(--radius-sm); font-weight: 700; font-size: 1rem; cursor: pointer; border: none; display: flex; align-items: center; justify-content: center; gap: 10px; transition: 0.3s; width: 100%; background: var(--success); color: #fff; box-shadow: 0 4px 15px rgba(0, 204, 102, 0.2);}
+        .btn-export:hover { background: #00b359; transform: translateY(-2px); box-shadow: 0 8px 25px rgba(0, 204, 102, 0.3);}
+        .btn-map-action { background: #3399ff; color: #fff; box-shadow: 0 4px 15px rgba(51, 153, 255, 0.2); }
+        .btn-map-action:hover { background: #2680eb; transform: translateY(-2px); box-shadow: 0 8px 25px rgba(51, 153, 255, 0.4);}
+        
+        .btn-excel { background-color: #217346; color: white; box-shadow: 0 4px 15px rgba(33, 115, 70, 0.2);}
+        .btn-excel:hover { background-color: #1e6b41; box-shadow: 0 8px 25px rgba(33, 115, 70, 0.3);}
+        .btn-pdf { background-color: #d32f2f; color: white; box-shadow: 0 4px 15px rgba(211, 47, 47, 0.2);}
+        .btn-pdf:hover { background-color: #b71c1c; box-shadow: 0 8px 25px rgba(211, 47, 47, 0.3);}
+
+        .history-card { background: var(--bg-input); border: 1px solid var(--border-light); padding: 20px; border-radius: var(--radius-md); margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 20px; transition: 0.3s;}
+        .history-card:hover { border-color: rgba(229, 193, 0, 0.3); background: #15151e;}
+        .history-details h3 { margin: 0 0 8px 0; color: var(--primary); font-size: 1.2rem; font-weight: 700;}
+        .history-details p { margin: 0; color: var(--text-muted); font-size: 0.9rem; line-height: 1.5;}
+        .history-actions { display: flex; gap: 10px; flex-wrap: wrap;}
+        .btn-mini { padding: 10px 14px; border-radius: 6px; font-weight: 600; cursor: pointer; border: none; font-size: 0.85rem; display: flex; align-items: center; gap: 6px; transition: 0.2s;}
+        .btn-mini-pdf { background: rgba(211, 47, 47, 0.1); color: #ff6b6b; border: 1px solid rgba(211, 47, 47, 0.2); } .btn-mini-pdf:hover{ background: #d32f2f; color: #fff;}
+        .btn-mini-excel { background: rgba(33, 115, 70, 0.1); color: #4da674; border: 1px solid rgba(33, 115, 70, 0.2);} .btn-mini-excel:hover{ background: #217346; color:#fff; }
+        .btn-mini-edit { background: rgba(229, 193, 0, 0.1); color: var(--primary); border: 1px solid rgba(229, 193, 0, 0.2);} .btn-mini-edit:hover{ background: var(--primary); color: #000; }
+        .btn-mini-delete { background: transparent; color: var(--text-muted); border: 1px solid var(--border-color); } .btn-mini-delete:hover{ background: rgba(255, 77, 77, 0.1); color: var(--danger); border-color: var(--danger); }
+
+        /* --- CARRINHO FLUTUANTE DE ROTA --- */
+        .cart-floating-bar { position: fixed; bottom: -120px; left: 50%; transform: translateX(-50%); width: 90%; max-width: 1400px; background: rgba(26, 26, 36, 0.95); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border: 1px solid rgba(229, 193, 0, 0.3); color: var(--text-main); padding: 20px 40px; border-radius: var(--radius-lg) var(--radius-lg) 0 0; box-shadow: 0 -10px 40px rgba(0,0,0,0.6), 0 0 20px rgba(229, 193, 0, 0.1); display: flex; justify-content: space-between; align-items: center; transition: bottom 0.5s cubic-bezier(0.16, 1, 0.3, 1); z-index: 900; }
+        .cart-floating-bar.active { bottom: 0; }
+        .cart-stats { display: flex; gap: 45px; align-items: center; flex-wrap: wrap;}
+        .cart-stat-item { display: flex; flex-direction: column; }
+        .cart-stat-label { font-size: 0.7rem; text-transform: uppercase; font-weight: 700; color: var(--primary); letter-spacing: 0.05em; margin-bottom: 4px;}
+        .cart-stat-val { font-size: 1.5rem; font-weight: 800; letter-spacing: -0.02em;}
+        
+        .cart-btn { background: var(--primary); color: #000; border: none; padding: 14px 35px; border-radius: var(--radius-sm); font-weight: 700; font-size: 1.05rem; cursor: pointer; transition: 0.3s; box-shadow: var(--shadow-glow);}
+        .cart-btn:hover { background: var(--primary-hover); transform: translateY(-2px); box-shadow: 0 8px 25px rgba(229, 193, 0, 0.4); }
+        .cart-btn-danger { background: transparent; color: var(--text-muted); border: 1px solid var(--border-color); box-shadow: none; font-size: 0.95rem; padding: 14px 25px;}
+        .cart-btn-danger:hover { background: rgba(255, 77, 77, 0.1); color: var(--danger); border-color: var(--danger); transform: none; box-shadow: none;}
+
+        .main-footer { text-align: center; padding: 25px; color: var(--text-muted); font-size: 0.85rem; border-top: 1px solid var(--border-color); background-color: var(--bg-body); margin-top: auto; width: 100%; box-sizing: border-box; font-weight: 500;}
+        .main-footer strong { color: var(--primary); font-weight: 700; }
+    </style>
+</head>
+<body>
+
+   <header>
+        <div class="header-brand">
+            <div class="header-title">
+                <div class="title-row">
+                    <h1>DASHBOARD - LOGÍSTICA & ROTEIRIZAÇÃO</h1>
+                    <span class="version-badge">v5.0 Premium (Edição de Mapa Ativa)</span>
+                </div>
+                <span class="subtitle">Análise Tática e Roteirização Dinâmica</span>
+            </div>
+        </div>
+        <div class="header-controls">
+            <button class="action-btn history-btn" id="btnHistory" onclick="openHistoryModal()">📋 Histórico de Rotas</button>
+            <button class="action-btn clear-btn" id="btnLimpar" onclick="limparDados()">Nova Planilha</button>
+            <label class="action-btn upload-btn">
+                Importar Relatório TI9
+                <input type="file" id="fileInput" class="hidden-input" accept=".xlsx, .xls, .csv">
+            </label>
+        </div>
+    </header>
+
+    <main class="main-container">
+        <div id="emptyState" class="state-message fade-in-up">
+            <h2>Nenhum relatório de pedidos carregado</h2>
+            <p>Faça o upload da planilha exportada do TI9 contendo Cidades, Pesos e Valores para montar as rotas.</p>
+        </div>
+
+        <div id="dashboardContent" style="display:none;">
+            <div class="filter-bar fade-in-up" style="animation-delay: 0.05s;">
+                <div class="filter-group">
+                    <label class="filter-label">Região</label>
+                    <div class="multi-select" id="ddRegiao"><button class="select-btn" onclick="toggleDropdown('ddRegiao')"><span class="btn-text">Todas Selecionadas</span></button><div class="list-items" id="listRegiao"></div></div>
+                </div>
+                <div class="filter-group">
+                    <label class="filter-label">Representante (Vendedor)</label>
+                    <div class="multi-select" id="ddVendedor"><button class="select-btn" onclick="toggleDropdown('ddVendedor')"><span class="btn-text">Todos Selecionados</span></button><div class="list-items" id="listVendedor"></div></div>
+                </div>
+                <div class="filter-group">
+                    <label class="filter-label">Cidade</label>
+                    <div class="multi-select" id="ddCidade"><button class="select-btn" onclick="toggleDropdown('ddCidade')"><span class="btn-text">Todas Selecionadas</span></button><div class="list-items" id="listCidade"></div></div>
+                </div>
+            </div>
+
+            <div class="kpi-grid fade-in-up" style="animation-delay: 0.1s;">
+                <div class="kpi-card"><div class="kpi-label">Pedidos Restantes a Faturar</div><div class="kpi-value" id="kpiPedidos">0</div></div>
+                <div class="kpi-card kpi-warning"><div class="kpi-label">Peso Bruto Pendente (KG)</div><div class="kpi-value" id="kpiPeso">0 kg</div></div>
+                <div class="kpi-card kpi-success"><div class="kpi-label">Faturamento Pendente</div><div class="kpi-value" id="kpiValor">R$ 0,00</div></div>
+            </div>
+
+            <div class="charts-row fade-in-up" style="animation-delay: 0.2s;">
+                <div class="chart-card"><div class="chart-header"><h3 class="chart-title">Peso Bruto Pendente por Região</h3></div><div class="chart-canvas-container"><canvas id="chartRegiao"></canvas></div></div>
+                <div class="chart-card"><div class="chart-header"><h3 class="chart-title">Top 10 Cidades Pendentes</h3></div><div class="chart-canvas-container"><canvas id="chartCidades"></canvas></div></div>
+            </div>
+
+            <div class="chart-header-title fade-in-up" style="animation-delay: 0.3s;">
+                <h3 class="chart-title" style="font-size: 1.3rem;">Resumo de Cargas por Cidade (Pendentes)</h3>
+                <span id="cidadesCount" style="color: var(--text-muted); font-size: 0.9rem; font-weight: 500;"></span>
+            </div>
+            
+            <div id="routeCardsContainer" class="route-grid"></div>
+        </div>
+    </main>
+
+    <div id="cityModal" class="modal-overlay" onclick="closeModal('cityModal', event)">
+        <div class="modal-content" onclick="event.stopPropagation()"><button class="modal-close" onclick="closeModal('cityModal', event)">&times;</button><div id="modalBody" style="padding: 40px;"></div></div>
+    </div>
+
+    <div id="reviewModal" class="modal-overlay" onclick="closeModal('reviewModal', event)">
+        <div class="modal-content" onclick="event.stopPropagation()" style="max-width: 1100px;">
+            <button class="modal-close" onclick="closeModal('reviewModal', event)">&times;</button>
+            
+            <div id="reviewStep1" style="padding: 40px;">
+                <h2 style="color: var(--primary); margin: 0 0 8px 0; font-size: 1.8rem; font-weight: 800;">📦 Finalizar Romaneio</h2>
+                <p style="color: var(--text-muted); margin-bottom: 30px; font-size: 0.95rem;">Confira os pedidos, digite os dados da rota e clique no Mapa para roteirizar!</p>
+                
+                <div class="review-header">
+                    <div class="review-input-group"><label>Nome / Identificação da Rota</label><input type="text" id="inputRouteName" placeholder="Ex: Rota Sul de Minas"></div>
+                    <div class="review-input-group"><label>Data de Saída Prevista</label><input type="date" id="inputRouteDate"></div>
+                    <div class="review-input-group" style="width: 100%; min-width: 100%;"><label>Observações para o Faturamento</label><input type="text" id="inputRouteObs" placeholder="Ex: Faturar até as 14h"></div>
+                </div>
+
+                <div id="reviewSummary" style="display: flex; gap: 20px; margin-bottom: 25px; flex-wrap: wrap;"></div>
+
+                <div class="table-responsive"><table class="orders-table" id="reviewTable"><thead><tr><th style="width: 40px; text-align: center;">Excluir</th><th>Pedido</th><th>Cliente</th><th>Cidade/UF</th><th>Peso</th><th>Valor</th></tr></thead><tbody></tbody></table></div>
+
+                <div class="export-actions" style="flex-direction: row; justify-content: space-between; align-items: center; border-top: none; margin-top: 15px;">
+                    <span style="color: var(--text-muted); font-size: 0.85rem; max-width: 50%;">Revise e defina o trajeto no mapa antes de salvar.</span>
+                    <div style="display: flex; gap: 15px;">
+                        <button class="btn-export btn-map-action" onclick="openMapModal()" style="width: auto;">🗺️ Roteirizar no Mapa</button>
+                        <button class="btn-export" onclick="finalizeRoute()" style="width: auto;">💾 Salvar e Fechar Rota</button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="reviewStep2" style="display:none; padding: 60px 40px; text-align: center;">
+                <div style="font-size: 4.5rem; margin-bottom: 20px;">✅</div>
+                <h2 style="color: var(--success); font-size: 2.2rem; margin-bottom: 15px; font-weight: 800;">Rota Salva com Sucesso!</h2>
+                <p style="color: var(--text-muted); font-size: 1.1rem; margin-bottom: 40px;">Os pedidos foram movidos para o Histórico.<br>Escolha o formato abaixo para exportar os ficheiros desta carga:</p>
+                <div style="display: flex; flex-wrap:wrap; gap: 20px; justify-content: center; margin-bottom: 50px;">
+                    <button class="btn-export btn-map-action" id="btnExportSuccessRoutePDF" style="width: auto; padding: 16px 30px;">Mapa da Rota (PDF)</button>
+                    <button class="btn-export btn-pdf" id="btnExportSuccessPDF" style="width: auto; padding: 16px 30px;">📄 Exportar Romaneio (PDF)</button>
+                    <button class="btn-export btn-excel" id="btnExportSuccessExcel" style="width: auto; padding: 16px 30px;">📊 Exportar Faturamento (Excel)</button>
+                </div>
+                <button class="btn-outline" onclick="closeModal('reviewModal')" style="padding: 12px 35px; font-size: 1rem;">Voltar ao Dashboard</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="mapModal" class="modal-overlay" onclick="closeModal('mapModal', event)">
+        <div class="modal-content" onclick="event.stopPropagation()" style="max-width: 1400px; padding: 25px; display: flex; flex-direction: column;">
+            <button class="modal-close" onclick="closeModal('mapModal', event)" style="top: 15px; right: 20px;">&times;</button>
+            <h2 style="color: var(--primary); margin: 0 0 5px 0; font-size: 1.5rem; font-weight: 800;">🗺️ Roteirização Otimizada</h2>
+            <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 15px;">Altere os pontos de partida, adicione paradas manuais ou exclua pontos indesejados da visualização.</p>
+            
+            <div style="display: flex; flex-wrap: wrap; gap: 15px; margin-bottom: 15px; background: rgba(0,0,0,0.3); padding: 15px; border-radius: var(--radius-sm); border: 1px solid var(--border-light);">
+                <div class="review-input-group" style="flex:1; min-width: 300px;">
+                    <label>📍 Ponto de Partida</label>
+                    <input type="text" id="mapOrigin" value="Av. Ver. José Maria Rangel - Parque Industrial Getulio Vargas, Mogi Guaçu - SP, 13849-252">
+                </div>
+                <div class="review-input-group" style="flex:1; min-width: 300px;">
+                    <label>🏁 Ponto de Retorno</label>
+                    <input type="text" id="mapDestination" value="Av. Ver. José Maria Rangel - Parque Industrial Getulio Vargas, Mogi Guaçu - SP, 13849-252">
+                </div>
+                <button class="btn-export" style="width: auto; align-self: flex-end; padding: 12px 20px; font-size: 0.9rem; background: var(--bg-hover); color: var(--primary); border: 1px solid var(--border-color); box-shadow: none;" onclick="calculateRoute(false)">🔄 Recalcular Trajeto</button>
+            </div>
+
+            <div class="map-layout">
+                <div class="map-sidebar">
+                    <div class="map-header-kpi">
+                        <div class="map-kpi-box"><span>Distância Total</span><strong id="mapDist">...</strong></div>
+                        <div class="map-kpi-box" style="border-left: 1px solid rgba(255,255,255,0.1);"><span>Tempo Estimado</span><strong id="mapDur">...</strong></div>
+                    </div>
+                    <div style="font-size: 0.8rem; color: var(--primary); font-weight: bold; text-transform: uppercase;">Ordem de Entrega</div>
+                    <div id="routeDraggableList" style="display: flex; flex-direction: column; gap: 10px;">
+                        </div>
+                    <button class="btn-outline" style="width:100%; margin-top:10px; font-size: 0.8rem; padding: 12px;" onclick="addManualWaypoint()">+ Adicionar Parada Manual</button>
+                </div>
+                <div class="map-container-wrapper">
+                    <div id="mapContainer" style="width: 100%; height: 100%;">
+                        <div style="display:flex; justify-content:center; align-items:center; height:100%; color:#888;">Carregando Mapa...</div>
+                    </div>
+                </div>
+            </div>
+            <div style="text-align: right; margin-top: 15px; display: flex; justify-content: flex-end; gap: 12px; flex-wrap: wrap;">
+                <button class="cart-btn" onclick="exportCurrentRouteImagePDF()" style="padding: 10px 25px; background: #d32f2f; color: #fff;">Exportar PDF</button>
+                <button class="cart-btn" id="mapSaveBtn" onclick="saveMapOrderAndClose()" style="padding: 10px 25px;">Aplicar Esta Rota</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="historyModal" class="modal-overlay" onclick="closeModal('historyModal', event)">
+        <div class="modal-content" onclick="event.stopPropagation()" style="max-width: 900px;"><button class="modal-close" onclick="closeModal('historyModal', event)">&times;</button><div style="padding: 40px;"><h2 style="color: var(--primary); margin: 0 0 8px 0; font-size: 1.8rem; font-weight: 800;">📋 Histórico de Rotas Criadas</h2><div id="historyContainer" style="max-height: 60vh; overflow-y: auto; padding-right: 15px;"></div></div></div>
+    </div>
+
+    <div id="cartFloatingBar" class="cart-floating-bar">
+        <div class="cart-stats">
+            <div class="cart-stat-item"><span class="cart-stat-label">Pedidos no Carrinho</span><span class="cart-stat-val" id="cartCount">0</span></div>
+            <div class="cart-stat-item"><span class="cart-stat-label">Peso Total</span><span class="cart-stat-val" id="cartWeight">0 kg</span></div>
+            <div class="cart-stat-item"><span class="cart-stat-label">Valor Total</span><span class="cart-stat-val" id="cartValue">R$ 0,00</span></div>
+        </div>
+        <div style="display: flex; gap: 15px; align-items: center;">
+            <button class="cart-btn-danger" onclick="clearCart()" title="Limpar carrinho">Cancelar Rota</button>
+            <button class="cart-btn" onclick="openReviewModal()">✓ Revisar e Fechar</button>
+        </div>
+    </div>
+
+    <footer class="main-footer"><p><strong>© 2026 Setor Comercial / Logística</strong> - Ferramenta de Análise de Faturamento</p></footer>
+
+    <script>
+        // --- GOOGLE MAPS CONFIG ---
+        let map, directionsService, directionsRenderer;
+        let currentMapWaypoints = [];
+        let isMapInitialized = false;
+        let mapNeedsUpdate = true; // Controla se o mapa precisa ser recriado a partir do carrinho
+        let lastMapDistanceText = 'Nao calculada';
+        let lastMapDurationText = 'Nao calculado';
+
+        function initMap() {
+            if(typeof google === 'undefined') return;
+            directionsService = new google.maps.DirectionsService();
+            directionsRenderer = new google.maps.DirectionsRenderer({
+                polylineOptions: { strokeColor: '#E5C100', strokeWeight: 5, strokeOpacity: 0.8 },
+                suppressMarkers: false
+            });
+            
+            const darkMapStyle = [
+                { elementType: "geometry", stylers: [{ color: "#242f3e" }] },
+                { elementType: "labels.text.stroke", stylers: [{ color: "#242f3e" }] },
+                { elementType: "labels.text.fill", stylers: [{ color: "#746855" }] },
+                { featureType: "administrative.locality", elementType: "labels.text.fill", stylers: [{ color: "#d59563" }] },
+                { featureType: "poi", elementType: "labels.text.fill", stylers: [{ color: "#d59563" }] },
+                { featureType: "road", elementType: "geometry", stylers: [{ color: "#38414e" }] },
+                { featureType: "road", elementType: "geometry.stroke", stylers: [{ color: "#212a37" }] },
+                { featureType: "road", elementType: "labels.text.fill", stylers: [{ color: "#9ca5b3" }] },
+                { featureType: "road.highway", elementType: "geometry", stylers: [{ color: "#746855" }] },
+                { featureType: "road.highway", elementType: "geometry.stroke", stylers: [{ color: "#1f2835" }] },
+                { featureType: "road.highway", elementType: "labels.text.fill", stylers: [{ color: "#f3d19c" }] },
+                { featureType: "water", elementType: "geometry", stylers: [{ color: "#17263c" }] },
+                { featureType: "water", elementType: "labels.text.fill", stylers: [{ color: "#515c6d" }] },
+                { featureType: "water", elementType: "labels.text.stroke", stylers: [{ color: "#17263c" }] }
+            ];
+
+            map = new google.maps.Map(document.getElementById("mapContainer"), {
+                zoom: 8, center: { lat: -22.368, lng: -46.944 }, backgroundColor: '#1a1a24', mapTypeId: 'roadmap',
+                styles: darkMapStyle, disableDefaultUI: true, zoomControl: true
+            });
+            directionsRenderer.setMap(map);
+            isMapInitialized = true;
+        }
+
+        // --- ESTADO GLOBAL DA APLICAÇÃO ---
+        let rawData = [];
+        let chartInstances = {}; 
+        let selectedOrdersIds = new Set(); 
+        let finalizedOrdersIds = new Set(); 
+        let routesHistory = []; 
+
+        function toggleDropdown(id) { document.querySelectorAll('.multi-select').forEach(el => { if (el.id !== id) el.classList.remove('open'); }); document.getElementById(id).classList.toggle('open'); }
+        document.addEventListener('click', function(e) { if (!e.target.closest('.multi-select')) { document.querySelectorAll('.multi-select').forEach(el => el.classList.remove('open')); } });
+        function parseNumero(valor) { if (typeof valor === 'number') return valor; if (!valor) return 0; let str = String(valor).trim().replace(/[^\d,\.-]/g, ''); if (str.includes(',')) str = str.replace(/\./g, '').replace(',', '.'); return parseFloat(str) || 0; }
+        
+        function limparDados() {
+            if(!confirm("Atenção: Ao carregar uma nova planilha, perderá o histórico de rotas atual. Deseja continuar?")) return;
+            rawData = []; selectedOrdersIds.clear(); finalizedOrdersIds.clear(); routesHistory = []; updateCartUI(); mapNeedsUpdate = true;
+            document.getElementById('fileInput').value = ""; document.getElementById('dashboardContent').style.display = 'none'; document.getElementById('emptyState').style.display = 'block'; document.getElementById('btnLimpar').style.display = 'none'; document.getElementById('btnHistory').style.display = 'none';
+        }
+        function clearCart() { if(confirm("Deseja cancelar o planeamento desta rota e limpar o carrinho?")) { selectedOrdersIds.clear(); updateCartUI(); updateDashboard(); mapNeedsUpdate = true; } }
+        function closeModal(modalId, e) {
+            if(e) e.stopPropagation(); document.getElementById(modalId).style.display = 'none';
+            if(modalId === 'reviewModal') { document.getElementById('reviewStep1').style.display = 'block'; document.getElementById('reviewStep2').style.display = 'none'; updateCartUI(); }
+            if(modalId === 'cityModal' || modalId === 'reviewModal') updateDashboard(); 
+        }
+
+        function buildMultiSelect(listId, dataSet) {
+            const listDiv = document.getElementById(listId); listDiv.innerHTML = `<label class="item all-check"><input type="checkbox" checked onchange="toggleAll('${listId}', this)"> Selecionar Todos</label>`;
+            Array.from(dataSet).sort().forEach(item => { if(item && item !== "-") listDiv.innerHTML += `<label class="item"><input type="checkbox" value="${item}" class="filter-cb" checked onchange="handleCbChange('${listId}')"> ${item}</label>`; });
+            updateBtnText(listId);
+        }
+        function toggleAll(listId, masterCb) { document.querySelectorAll(`#${listId} .filter-cb`).forEach(cb => cb.checked = masterCb.checked); handleCbChange(listId); }
+        function handleCbChange(listId) {
+            document.querySelector(`#${listId} .all-check input`).checked = Array.from(document.querySelectorAll(`#${listId} .filter-cb`)).every(cb => cb.checked);
+            updateBtnText(listId); updateDashboard(); 
+        }
+        function updateBtnText(listId) {
+            const checks = document.querySelectorAll(`#${listId} .filter-cb:checked`).length, total = document.querySelectorAll(`#${listId} .filter-cb`).length;
+            document.querySelector(`#${listId}`).closest('.multi-select').querySelector('.btn-text').innerText = checks === total ? "Todas Selecionadas" : (checks === 0 ? "Nenhuma Selecionada" : `${checks} Selecionada(s)`);
+        }
+        function getSelectedValues(listId) { return Array.from(document.querySelectorAll(`#${listId} .filter-cb:checked`)).map(cb => cb.value); }
+
+        document.getElementById('fileInput').addEventListener('change', function(e) {
+            const file = e.target.files[0]; if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(evt) {
+                try {
+                    const data = new Uint8Array(evt.target.result); const workbook = XLSX.read(data, { type: 'array' });
+                    const jsonData = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], { defval: "" });
+                    if (jsonData.length === 0) throw new Error("Planilha vazia.");
+
+                    rawData = []; selectedOrdersIds.clear(); finalizedOrdersIds.clear(); routesHistory = []; updateCartUI(); mapNeedsUpdate = true;
+
+                    const keys = Object.keys(jsonData[0]);
+                    const getCol = (keywords) => keys.find(k => keywords.some(kw => k.toLowerCase().includes(kw)));
+
+                    const colNumeroPedido = keys.find(k => k.toLowerCase() === 'número' || k.toLowerCase() === 'numero');
+                    let colNumeroEnd = keys.find(k => k.toLowerCase() === 'número_1' || k.toLowerCase() === 'numero_1');
+                    if(!colNumeroEnd) colNumeroEnd = keys.find(k => k.toLowerCase().includes('número') && k !== colNumeroPedido); 
+
+                    const cols = {
+                        filial: getCol(['filial']), numero: colNumeroPedido, pedidoCliente: getCol(['pedido do cliente']), codOperacao: getCol(['codigo_operacao', 'código_op']),
+                        codCliente: getCol(['cod cliente', 'código cliente', 'cod_cliente']), nomeCliente: getCol(['nome cliente']), 
+                        cep: getCol(['cep']), endereco: getCol(['endereço', 'endereco', 'logradouro']), numeroEnd: colNumeroEnd, bairro: getCol(['bairro']),
+                        cidade: getCol(['cidade']), uf: getCol(['uf', 'estado']), vendedor: keys.find(k => k.toLowerCase() === 'nome vendedor') || getCol(['representante', 'vendedor']), 
+                        regiao: getCol(['regiao vendedor', 'regiao', 'região']), dataEntrada: getCol(['data_entrada', 'data entrada', 'data']),
+                        valor: getCol(['valor total', 'vlr total']), peso: getCol(['peso_bruto', 'peso bruto']), volumes: getCol(['qtde_volumes', 'volumes']), 
+                        condPagamento: getCol(['condicao pagamento', 'condição pagamento', 'condição', 'pagamento']), obs: getCol(['observação simples', 'obs', 'observacao'])
+                    };
+
+                    let temp100 = [], temp777 = [], tempOthers = [];
+                    jsonData.forEach(row => {
+                        let num = row[cols.numero]; if (!num) return; 
+                        let filial = String(row[cols.filial] || "-").trim();
+                        let order = {
+                            uid: `${filial}_${num}`, filial: filial, numero: num, pedidoCliente: String(row[cols.pedidoCliente] || "-").trim(),
+                            codOperacao: String(row[cols.codOperacao] || "-").trim(), codCliente: String(row[cols.codCliente] || "-").trim(),
+                            nomeCliente: String(row[cols.nomeCliente] || "Não Informado").trim(), cep: String(row[cols.cep] || "").trim(), endereco: String(row[cols.endereco] || "").trim(),
+                            numeroEnd: String(row[cols.numeroEnd] || "").trim(), bairro: String(row[cols.bairro] || "").trim(),
+                            cidade: String(row[cols.cidade] || "NÃO INFORMADA").trim().toUpperCase(), uf: String(row[cols.uf] || "-").trim().toUpperCase(), 
+                            regiao: String(row[cols.regiao] || "OUTRAS").trim().toUpperCase(), vendedor: String(row[cols.vendedor] || "NÃO INFORMADO").trim().toUpperCase(), 
+                            dataEntrada: row[cols.dataEntrada] || "-", valor: parseNumero(row[cols.valor]), peso: parseNumero(row[cols.peso]), volumes: parseNumero(row[cols.volumes]), 
+                            condPagamento: String(row[cols.condPagamento] || "-").trim(), obs: String(row[cols.obs] || "").trim()
+                        };
+
+                        if (filial === '100' && order.pedidoCliente.toUpperCase().includes('FORCE')) temp100.push(order);
+                        else if (filial === '777') temp777.push(order);
+                        else tempOthers.push(order);
+                    });
+
+                    temp777.forEach(o777 => {
+                        let matchIdx = temp100.findIndex(o100 => o100.codCliente === o777.codCliente && o100.cidade === o777.cidade && Math.abs(o100.peso - o777.peso) < 0.1 && !o100.matched);
+                        if (matchIdx > -1) { temp100[matchIdx].matched = true; temp100[matchIdx].childOrder = o777; temp100[matchIdx].isMerged = true; } 
+                        else { tempOthers.push(o777); }
+                    });
+
+                    rawData = [...temp100, ...tempOthers];
+                    const regioesSet = new Set(), vendedoresSet = new Set(), cidadesSet = new Set();
+                    rawData.forEach(o => { regioesSet.add(o.regiao); vendedoresSet.add(o.vendedor); cidadesSet.add(o.cidade); });
+
+                    buildMultiSelect('listRegiao', regioesSet); buildMultiSelect('listVendedor', vendedoresSet); buildMultiSelect('listCidade', cidadesSet);
+                    document.getElementById('emptyState').style.display = 'none'; document.getElementById('dashboardContent').style.display = 'block';
+                    document.getElementById('btnLimpar').style.display = 'flex'; document.getElementById('btnHistory').style.display = 'flex';
+                    updateDashboard();
+
+                } catch (error) { alert("Erro ao ler planilha: " + error.message); }
+            };
+            reader.readAsArrayBuffer(file);
+        });
+
+        function updateCartUI() {
+            const bar = document.getElementById('cartFloatingBar');
+            if (selectedOrdersIds.size === 0) { bar.classList.remove('active'); return; }
+            let tPeso = 0, tValor = 0;
+            const selectedData = rawData.filter(o => selectedOrdersIds.has(o.uid));
+            selectedData.forEach(o => { tPeso += o.peso; tValor += o.valor; });
+            document.getElementById('cartCount').innerText = selectedData.length;
+            document.getElementById('cartWeight').innerText = tPeso.toLocaleString('pt-BR', {minimumFractionDigits: 1}) + ' kg';
+            document.getElementById('cartValue').innerText = tValor.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'});
+            bar.classList.add('active');
+        }
+
+        function toggleOrderSelection(uid, isChecked) { if(isChecked) selectedOrdersIds.add(uid); else selectedOrdersIds.delete(uid); updateCartUI(); mapNeedsUpdate = true; }
+        function addCityToCart(cidade, uf) {
+            const regF = getSelectedValues('listRegiao'), vendF = getSelectedValues('listVendedor');
+            rawData.filter(item => !finalizedOrdersIds.has(item.uid) && item.cidade === cidade && item.uf === uf && regF.includes(item.regiao) && vendF.includes(item.vendedor))
+                   .forEach(o => selectedOrdersIds.add(o.uid));
+            updateCartUI(); updateDashboard(); mapNeedsUpdate = true; 
+        }
+
+        function updateDashboard() {
+            const regF = getSelectedValues('listRegiao'), vendF = getSelectedValues('listVendedor'), cidF = getSelectedValues('listCidade');
+            let pendingData = rawData.filter(item => !finalizedOrdersIds.has(item.uid) && regF.includes(item.regiao) && vendF.includes(item.vendedor) && cidF.includes(item.cidade));
+            let totalPedidos = pendingData.length, totalPeso = 0, totalValor = 0;
+            const rotasPorCidade = {}; const pesoPorRegiao = {}; 
+            
+            pendingData.forEach(item => {
+                totalPeso += item.peso; totalValor += item.valor; pesoPorRegiao[item.regiao] = (pesoPorRegiao[item.regiao] || 0) + item.peso;
+                let cityKey = item.cidade + " - " + item.uf;
+                if (!rotasPorCidade[cityKey]) rotasPorCidade[cityKey] = { cidade: item.cidade, uf: item.uf, regiao: item.regiao, pedidos: 0, peso: 0, valor: 0, volumes: 0, pedidosNoCarrinho: 0 };
+                rotasPorCidade[cityKey].pedidos += 1; rotasPorCidade[cityKey].peso += item.peso; rotasPorCidade[cityKey].valor += item.valor; rotasPorCidade[cityKey].volumes += item.volumes;
+                if (selectedOrdersIds.has(item.uid)) rotasPorCidade[cityKey].pedidosNoCarrinho += 1;
+            });
+
+            document.getElementById('kpiPedidos').innerText = totalPedidos;
+            document.getElementById('kpiPeso').innerText = totalPeso.toLocaleString('pt-BR', {minimumFractionDigits: 1}) + ' kg';
+            document.getElementById('kpiValor').innerText = totalValor.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'});
+
+            let cidadesArray = Object.values(rotasPorCidade).sort((a, b) => b.peso - a.peso);
+            document.getElementById('cidadesCount').innerText = `${cidadesArray.length} Cidades Pendentes`;
+            renderRouteCards(cidadesArray); renderCharts(pesoPorRegiao, cidadesArray); 
+        }
+
+        // CORREÇÃO: Destruindo e recriando os gráficos sempre para evitar glitches do ChartJS com arrays vazios
+        function renderCharts(pesoRegiao, cidadesArray) {
+            Object.values(chartInstances).forEach(c => c && c.destroy()); 
+            chartInstances = {};
+
+            const regiaoLabels = Object.keys(pesoRegiao);
+            const regiaoData = Object.values(pesoRegiao);
+            
+            if(regiaoLabels.length > 0) {
+                chartInstances.regiao = new Chart(document.getElementById('chartRegiao'), {
+                    type: 'doughnut', data: { labels: regiaoLabels, datasets: [{ data: regiaoData, backgroundColor: ['#3399ff', '#E5C100', '#00cc66', '#ff4d4d', '#9C27B0', '#ffb84d'], borderWidth: 0 }] },
+                    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right', labels: { color: '#f0f0f5', font: { family: "'Inter', sans-serif" } } }, tooltip: { callbacks: { label: function(context) { let label = context.label || ''; if (label) { label += ': '; } let total = context.dataset.data.reduce((a, b) => a + b, 0); return label + context.raw.toLocaleString('pt-BR') + ' kg (' + ((context.raw / total) * 100).toFixed(1) + '%)'; } } }, datalabels: { color: '#12121a', font: { weight: 'bold', size: 13, family: "'Inter', sans-serif" }, formatter: (value, ctx) => { let total = ctx.dataset.data.reduce((a, b) => a + b, 0); if(total === 0) return ''; return ((value / total) * 100) > 4 ? ((value / total) * 100).toFixed(0) + '%' : ''; } } } }
+                });
+            }
+
+            const topCidades = [...cidadesArray].sort((a,b) => b.pedidos - a.pedidos).slice(0, 10);
+            if(topCidades.length > 0) {
+                chartInstances.cidades = new Chart(document.getElementById('chartCidades'), {
+                    type: 'bar', data: { labels: topCidades.map(c => c.cidade), datasets: [{ label: 'Pedidos Pendentes', data: topCidades.map(c => c.pedidos), backgroundColor: '#E5C100', borderRadius: 4 }] },
+                    options: { responsive: true, maintainAspectRatio: false, layout: { padding: { top: 20 } }, plugins: { legend: { display: false }, tooltip: { callbacks: { label: function(context) { return context.raw + ' Pedidos Pendentes'; } } }, datalabels: { color: '#E5C100', anchor: 'end', align: 'top', offset: 2, font: { weight: 'bold', size: 12, family: "'Inter', sans-serif" }, formatter: Math.round } }, scales: { y: { grid: { color: 'rgba(255,255,255,0.05)' }, beginAtZero: true, ticks: {color: '#8b8b9e'} }, x: { grid: { display: false }, ticks: {color: '#8b8b9e'} } } }
+                });
+            }
+        }
+
+        function renderRouteCards(cidades) {
+            const container = document.getElementById('routeCardsContainer');
+            if(cidades.length === 0) { container.innerHTML = '<p class="fade-in-up" style="color:var(--text-muted); font-size:1.1rem; padding: 20px; font-weight: 500;">🎉 Todos os pedidos filtrados foram roteirizados ou não há dados!</p>'; return; }
+            let html = '';
+            cidades.forEach((rota, index) => {
+                let buttonHtml = rota.pedidosNoCarrinho === rota.pedidos ? `<span class="btn-selected">✓ No Carrinho</span>` : (rota.pedidosNoCarrinho > 0 ? `<button class="btn-outline" style="border-color:var(--warning); color:var(--warning);" onclick="addCityToCart('${rota.cidade}', '${rota.uf}')">⚠ Completar Carga</button>` : `<button class="btn-outline" onclick="addCityToCart('${rota.cidade}', '${rota.uf}')">+ Add ao Carrinho</button>`);
+                html += `<div class="route-card"><div onclick="openCityModal('${rota.cidade}', '${rota.uf}')"><div class="route-city"><span class="city-name" title="${rota.cidade} - ${rota.uf}">${rota.cidade} - ${rota.uf}</span><span class="route-region-badge">${rota.regiao}</span></div><div class="route-metric"><span>Pedidos Restantes:</span><strong>${rota.pedidos}</strong></div><div class="route-metric"><span>Faturamento Rest:</span><strong style="color: var(--success);">${rota.valor.toLocaleString('pt-BR', {style:'currency', currency:'BRL'})}</strong></div><div class="route-metric" style="margin-top: 15px; border-top: 1px dashed rgba(255,255,255,0.05); padding-top: 15px;"><span>Peso Restante:</span><strong class="highlight-weight">${rota.peso.toLocaleString('pt-BR', {minimumFractionDigits: 1})} kg</strong></div></div><div class="route-actions">${buttonHtml}<button class="btn-view" onclick="openCityModal('${rota.cidade}', '${rota.uf}')">Ver Carga</button></div></div>`;
+            });
+            container.innerHTML = html;
+        }
+
+        function openCityModal(cidade, uf) {
+            const regF = getSelectedValues('listRegiao'), vendF = getSelectedValues('listVendedor');
+            const orders = rawData.filter(item => !finalizedOrdersIds.has(item.uid) && item.cidade === cidade && item.uf === uf && regF.includes(item.regiao) && vendF.includes(item.vendedor));
+            let tbody = '';
+            orders.forEach(o => {
+                let isChecked = selectedOrdersIds.has(o.uid);
+                let filialDisplay = o.isMerged ? `<span class="badge-merged" title="Pedido Mesclado">100 + 777 ✨</span>` : o.filial;
+                tbody += `<tr><td style="text-align: center;"><input type="checkbox" class="modal-order-cb" value="${o.uid}" onchange="toggleOrderSelection('${o.uid}', this.checked)" ${isChecked ? 'checked' : ''}></td><td>${filialDisplay}</td><td><strong>${o.numero}</strong></td><td>${o.pedidoCliente}</td><td title="${o.nomeCliente}">${String(o.nomeCliente).substring(0, 25)}...</td><td style="color:var(--warning); font-weight:700;">${o.peso.toLocaleString('pt-BR')} kg</td><td style="color:var(--success); font-weight:700;">${o.valor.toLocaleString('pt-BR', {style:'currency', currency:'BRL'})}</td><td class="obs-text" title="${o.obs || 'Sem observação'}">${o.obs || '-'}</td></tr>`;
+            });
+            document.getElementById('modalBody').innerHTML = `<div style="display:flex; justify-content:space-between; align-items: flex-end; margin-bottom: 25px; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 15px;"><div><h2 style="color: var(--primary); margin: 0 0 8px 0; font-size: 1.8rem; font-weight: 800;">📍 Pendências em ${cidade} - ${uf}</h2></div></div><div class="table-responsive"><table class="orders-table"><thead><tr><th style="width: 40px;"></th><th>Filial</th><th>Número</th><th>Ped. Cliente</th><th>Cliente</th><th>Peso</th><th>Valor</th><th>Observação</th></tr></thead><tbody>${tbody}</tbody></table></div>`;
+            document.getElementById('cityModal').style.display = 'flex';
+        }
+
+        function openReviewModal() {
+            if(selectedOrdersIds.size === 0) return; renderReviewTable();
+            document.getElementById('cartFloatingBar').classList.remove('active');
+            document.getElementById('reviewModal').style.display = 'flex';
+        }
+
+        function removeOrderFromReview(uid) {
+            selectedOrdersIds.delete(uid); updateCartUI(); mapNeedsUpdate = true;
+            if(selectedOrdersIds.size === 0) { closeModal('reviewModal'); } else { renderReviewTable(); } 
+        }
+
+        function renderReviewTable() {
+            const selectedData = rawData.filter(o => selectedOrdersIds.has(o.uid));
+            let tPeso = 0, tValor = 0, tVol = 0, tbody = '';
+            selectedData.forEach(o => {
+                tPeso += o.peso; tValor += o.valor; tVol += o.volumes;
+                let filialDisplay = o.isMerged ? `<span class="badge-merged" style="padding: 2px 6px; font-size: 0.65rem;">100 + 777</span>` : o.filial;
+                tbody += `<tr><td style="text-align: center;"><button class="btn-remove-row" onclick="removeOrderFromReview('${o.uid}')" title="Remover da Rota">✖</button></td><td><strong>${o.numero}</strong> <br> ${filialDisplay}</td><td title="${o.nomeCliente}">${String(o.nomeCliente).substring(0, 30)}...</td><td>${o.cidade} / ${o.uf}</td><td style="color:var(--warning); font-weight:700;">${o.peso.toLocaleString('pt-BR')} kg</td><td style="color:var(--success); font-weight:700;">${o.valor.toLocaleString('pt-BR', {style:'currency', currency:'BRL'})}</td></tr>`;
+            });
+            document.getElementById('reviewSummary').innerHTML = `<div style="background: var(--bg-input); padding: 20px; border-radius: var(--radius-sm); flex: 1; border-left: 4px solid var(--primary); min-width: 150px;"><span style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Pedidos</span><br><strong style="font-size: 1.8rem; color: #fff;">${selectedData.length}</strong></div><div style="background: var(--bg-input); padding: 20px; border-radius: var(--radius-sm); flex: 1; border-left: 4px solid var(--blue); min-width: 150px;"><span style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Volumes</span><br><strong style="font-size: 1.8rem; color: var(--blue);">${tVol}</strong></div><div style="background: var(--bg-input); padding: 20px; border-radius: var(--radius-sm); flex: 1; border-left: 4px solid var(--warning); min-width: 150px;"><span style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Peso Total</span><br><strong style="font-size: 1.8rem; color: var(--warning);">${tPeso.toLocaleString('pt-BR', {minimumFractionDigits: 1})} kg</strong></div>`;
+            document.querySelector('#reviewTable tbody').innerHTML = tbody;
+        }
+
+        // ==========================================
+        //  INTEGRAÇÃO GOOGLE MAPS (ROTEIRIZAÇÃO)
+        // ==========================================
+        let draggedItem = null;
+
+        function openMapModal(historyId = null) {
+            if(typeof google === 'undefined') {
+                alert("O Google bloqueou a conexão. Isso acontece porque a Chave da API foi restrita pelo seu TI apenas para sites oficiais.\n\nPeça ao TI para liberar a origem 'localhost' ou 'file://*' no painel do Google Cloud para que você possa testar do seu computador, ou suba o arquivo para um servidor da empresa.");
+                return;
+            }
+            
+            document.getElementById('mapModal').style.display = 'flex';
+            if(!isMapInitialized) {
+                initMap();
+            } else if(map) {
+                google.maps.event.trigger(map, 'resize');
+            }
+
+            if(historyId) {
+                // ABRINDO DO HISTÓRICO: Carrega exatamente o que estava salvo
+                const route = routesHistory.find(r => r.id === historyId);
+                currentMapWaypoints = JSON.parse(JSON.stringify(route.mapWaypoints)); // Clona pra não alterar o histórico sem querer
+                document.getElementById('mapOrigin').value = route.mapOrigin;
+                document.getElementById('mapDestination').value = route.mapDestination;
+                
+                document.getElementById('mapSaveBtn').style.display = 'none'; // Apenas visualização
+                renderDraggableList();
+                calculateRoute(false); 
+            } else {
+                // CRIANDO NOVA ROTA:
+                document.getElementById('mapSaveBtn').style.display = 'inline-block';
+                
+                if (mapNeedsUpdate) {
+                    const selectedData = rawData.filter(o => selectedOrdersIds.has(o.uid));
+                    if(selectedData.length === 0) return;
+
+                    let uniqueAddresses = {};
+                    selectedData.forEach(o => {
+                        let endCompleto = `${o.endereco}, ${o.numeroEnd} - ${o.bairro}, ${o.cidade} - ${o.uf}, ${o.cep}`;
+                        if(!uniqueAddresses[endCompleto]) {
+                            uniqueAddresses[endCompleto] = { address: endCompleto, clientes: new Set() };
+                        }
+                        uniqueAddresses[endCompleto].clientes.add(o.nomeCliente);
+                    });
+
+                    currentMapWaypoints = Object.values(uniqueAddresses).map((val, idx) => {
+                        return { id: 'wp_'+idx, address: val.address, label: Array.from(val.clientes).join(', ') };
+                    });
+
+                    document.getElementById('mapOrigin').value = "Av. Ver. José Maria Rangel - Parque Industrial Getulio Vargas, Mogi Guaçu - SP, 13849-252";
+                    document.getElementById('mapDestination').value = "Av. Ver. José Maria Rangel - Parque Industrial Getulio Vargas, Mogi Guaçu - SP, 13849-252";
+                    
+                    mapNeedsUpdate = false;
+                    renderDraggableList();
+                    calculateRoute(true); // Otimiza a primeira vez
+                } else {
+                    // Se o mapa não precisa de update, mantém as edições manuais que o Pedro já tinha feito
+                    renderDraggableList();
+                    calculateRoute(false);
+                }
+            }
+        }
+
+        function removeWaypoint(idx) {
+            currentMapWaypoints.splice(idx, 1);
+            renderDraggableList();
+            calculateRoute(false);
+        }
+
+        function addManualWaypoint() {
+            let addr = prompt("Digite o endereço completo da nova parada (Ex: Rua XYZ, 100, Bairro, Cidade - SP):");
+            if(addr && addr.trim() !== '') {
+                currentMapWaypoints.push({ id: 'manual_'+Date.now(), address: addr, label: 'Parada Manual Extra' });
+                renderDraggableList();
+                calculateRoute(false);
+            }
+        }
+
+        function calculateRoute(optimize = false) {
+            if(!isMapInitialized || currentMapWaypoints.length === 0) return;
+
+            const origin = document.getElementById('mapOrigin').value;
+            const destination = document.getElementById('mapDestination').value;
+            
+            const waypointsMap = currentMapWaypoints.map(wp => ({
+                location: wp.address,
+                stopover: true
+            }));
+
+            directionsService.route({
+                origin: origin,
+                destination: destination, 
+                waypoints: waypointsMap,
+                optimizeWaypoints: optimize,
+                travelMode: google.maps.TravelMode.DRIVING
+            }, (response, status) => {
+                if (status === "OK") {
+                    directionsRenderer.setDirections(response);
+                    
+                    if(optimize) {
+                        const route = response.routes[0];
+                        const order = route.waypoint_order;
+                        let newWaypoints = [];
+                        order.forEach(idx => { newWaypoints.push(currentMapWaypoints[idx]); });
+                        currentMapWaypoints = newWaypoints;
+                        renderDraggableList(); 
+                    }
+                    
+                    let dist = 0, dur = 0;
+                    response.routes[0].legs.forEach(leg => { dist += leg.distance.value; dur += leg.duration.value; });
+                    document.getElementById('mapDist').innerText = (dist/1000).toFixed(1) + ' km';
+                    
+                    let hours = Math.floor(dur / 3600);
+                    let minutes = Math.floor((dur % 3600) / 60);
+                    document.getElementById('mapDur').innerText = hours > 0 ? `${hours}h ${minutes}min` : `${minutes} min`;
+                    lastMapDistanceText = document.getElementById('mapDist').innerText;
+                    lastMapDurationText = document.getElementById('mapDur').innerText;
+                    
+                } else {
+                    alert("Atenção: O Google não conseguiu traçar a rota com alguns dos endereços informados.\n\nCódigo do Erro: " + status);
+                }
+            });
+        }
+
+        function renderDraggableList() {
+            const list = document.getElementById('routeDraggableList');
+            list.innerHTML = '';
+            currentMapWaypoints.forEach((wp, i) => {
+                const div = document.createElement('div');
+                div.className = 'draggable-item';
+                div.draggable = true;
+                div.dataset.index = i;
+                div.innerHTML = `
+                    <div style="font-weight:900; color:var(--primary); font-size:1.2rem; min-width:25px; text-align:center;">${i+1}</div>
+                    <div style="flex:1; overflow:hidden;">
+                        <div style="font-size:0.85rem; color:#fff; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${wp.label}">${wp.label}</div>
+                        <div style="font-size:0.7rem; color:var(--text-muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${wp.address}">${wp.address}</div>
+                    </div>
+                    <div style="display:flex; align-items:center; gap: 10px;">
+                        <button class="btn-remove-map" onclick="removeWaypoint(${i})" title="Remover do Mapa">✖</button>
+                        <div class="drag-handle" title="Arraste para reordenar">☰</div>
+                    </div>
+                `;
+                
+                div.addEventListener('dragstart', function() { draggedItem = this; setTimeout(() => this.classList.add('dragging'), 0); });
+                div.addEventListener('dragover', function(e) { e.preventDefault(); });
+                div.addEventListener('dragenter', function(e) { e.preventDefault(); });
+                div.addEventListener('drop', function() {
+                    if(this !== draggedItem) {
+                        let all = [...list.querySelectorAll('.draggable-item')];
+                        let draggedIdx = all.indexOf(draggedItem);
+                        let targetIdx = all.indexOf(this);
+                        if(draggedIdx < targetIdx) this.parentNode.insertBefore(draggedItem, this.nextSibling);
+                        else this.parentNode.insertBefore(draggedItem, this);
+                    }
+                });
+                div.addEventListener('dragend', function() {
+                    this.classList.remove('dragging'); draggedItem = null;
+                    const newOrder = [];
+                    list.querySelectorAll('.draggable-item').forEach(el => newOrder.push(currentMapWaypoints[el.dataset.index]));
+                    currentMapWaypoints = newOrder;
+                    renderDraggableList(); 
+                    calculateRoute(false); 
+                });
+                
+                list.appendChild(div);
+            });
+        }
+
+        function saveMapOrderAndClose() {
+            closeModal('mapModal');
+        }
+
+        function exportCurrentRouteImagePDF() {
+            const routeData = selectedOrdersIds.size > 0 ? rawData.filter(o => selectedOrdersIds.has(o.uid)) : [];
+            let tPeso = 0, tValor = 0;
+            routeData.forEach(o => { tPeso += o.peso; tValor += o.valor; });
+
+            const tempRoute = {
+                name: (document.getElementById('inputRouteName').value || `Rota_${routesHistory.length + 1}`).toUpperCase(),
+                dateOut: document.getElementById('inputRouteDate').value || 'NÃ£o informada',
+                obs: document.getElementById('inputRouteObs').value || '',
+                date: new Date().toLocaleString('pt-BR'),
+                orders: routeData,
+                totalWeight: tPeso,
+                totalValue: tValor,
+                qty: routeData.length,
+                mapWaypoints: currentMapWaypoints,
+                mapOrigin: document.getElementById('mapOrigin').value,
+                mapDestination: document.getElementById('mapDestination').value,
+                mapDistance: lastMapDistanceText,
+                mapDuration: lastMapDurationText
+            };
+
+            doExportRouteImagePDF(tempRoute);
+        }
+
+        // ==========================================
+
+        function finalizeRoute() {
+            const routeName = document.getElementById('inputRouteName').value || `Rota_${routesHistory.length + 1}`;
+            const routeDateOut = document.getElementById('inputRouteDate').value || 'Não informada';
+            const routeObs = document.getElementById('inputRouteObs').value || '';
+            const routeData = rawData.filter(o => selectedOrdersIds.has(o.uid));
+            
+            let tPeso = 0, tValor = 0;
+            routeData.forEach(o => { tPeso += o.peso; tValor += o.valor; });
+            
+            const routeRecord = { 
+                id: Date.now(), name: routeName.toUpperCase(), dateOut: routeDateOut, obs: routeObs,
+                date: new Date().toLocaleString('pt-BR'), orders: routeData, totalWeight: tPeso, totalValue: tValor, qty: routeData.length,
+                // Salvando o Status do Mapa na Rota
+                mapWaypoints: currentMapWaypoints,
+                mapOrigin: document.getElementById('mapOrigin').value,
+                mapDestination: document.getElementById('mapDestination').value,
+                mapDistance: lastMapDistanceText,
+                mapDuration: lastMapDurationText
+            };
+            routesHistory.push(routeRecord);
+
+            selectedOrdersIds.forEach(uid => finalizedOrdersIds.add(uid)); selectedOrdersIds.clear();
+
+            document.getElementById('inputRouteName').value = ''; document.getElementById('inputRouteDate').value = ''; document.getElementById('inputRouteObs').value = '';
+            updateCartUI(); mapNeedsUpdate = true;
+            
+            document.getElementById('reviewStep1').style.display = 'none'; document.getElementById('reviewStep2').style.display = 'block';
+            document.getElementById('btnExportSuccessPDF').onclick = function() { reExportPDF(routeRecord.id); };
+            document.getElementById('btnExportSuccessRoutePDF').onclick = function() { reExportRouteImagePDF(routeRecord.id); };
+            document.getElementById('btnExportSuccessExcel').onclick = function() { reExportExcel(routeRecord.id); };
+        }
+
+        function openHistoryModal() {
+            const container = document.getElementById('historyContainer');
+            if(routesHistory.length === 0) {
+                container.innerHTML = '<p style="color:var(--text-muted);">Nenhuma rota foi fechada nesta sessão ainda.</p>';
+            } else {
+                let html = '';
+                [...routesHistory].reverse().forEach(route => {
+                    let fDateOut = route.dateOut;
+                    if(fDateOut && fDateOut.includes('-')) { let p = fDateOut.split('-'); fDateOut = `${p[2]}/${p[1]}/${p[0]}`; }
+
+                    html += `<div class="history-card"><div class="history-details"><h3>🚗 ${route.name}</h3><p>Saída Prevista: ${fDateOut} | Criada em: ${route.date}</p><p style="margin-top: 8px; color: var(--text-main);"><strong>${route.qty} Pedidos</strong> | Peso: ${route.totalWeight.toLocaleString('pt-BR')} kg | Val: ${route.totalValue.toLocaleString('pt-BR', {style:'currency', currency:'BRL'})}</p></div><div class="history-actions"><button class="btn-mini btn-mini-edit" style="background:#3399ff; color:#fff; border:none;" onclick="openMapModal(${route.id})">🗺️ Ver Mapa</button><button class="btn-mini btn-mini-edit" onclick="reExportRouteImagePDF(${route.id})">Mapa PDF</button><button class="btn-mini btn-mini-pdf" onclick="reExportPDF(${route.id})">📄 PDF</button><button class="btn-mini btn-mini-excel" onclick="reExportExcel(${route.id})">📊 Excel</button><button class="btn-mini btn-mini-edit" onclick="editRoute(${route.id})">✏️ Editar</button><button class="btn-mini btn-mini-delete" onclick="deleteRoute(${route.id})">🗑️ Excluir</button></div></div>`;
+                });
+                container.innerHTML = html;
+            }
+            document.getElementById('historyModal').style.display = 'flex';
+        }
+
+        function deleteRoute(id) {
+            if(!confirm("Tem a certeza que deseja excluir esta rota? Os pedidos voltarão para as pendências.")) return;
+            const routeIndex = routesHistory.findIndex(r => r.id === id);
+            if(routeIndex > -1) { routesHistory[routeIndex].orders.forEach(o => finalizedOrdersIds.delete(o.uid)); routesHistory.splice(routeIndex, 1); updateDashboard(); openHistoryModal(); }
+        }
+
+        function editRoute(id) {
+            if(!confirm("Esta rota será cancelada e os pedidos voltarão para o carrinho. Deseja continuar?")) return;
+            const routeIndex = routesHistory.findIndex(r => r.id === id);
+            if(routeIndex > -1) {
+                const route = routesHistory[routeIndex];
+                route.orders.forEach(o => { finalizedOrdersIds.delete(o.uid); selectedOrdersIds.add(o.uid); });
+                
+                document.getElementById('inputRouteName').value = route.name;
+                if (route.dateOut !== 'Não informada') document.getElementById('inputRouteDate').value = route.dateOut;
+                document.getElementById('inputRouteObs').value = route.obs;
+                
+                // Restaura os waypoints no modo edição para não perder as ordens manuais que o Pedro fez antes de salvar
+                currentMapWaypoints = route.mapWaypoints;
+                document.getElementById('mapOrigin').value = route.mapOrigin;
+                document.getElementById('mapDestination').value = route.mapDestination;
+                mapNeedsUpdate = false; 
+
+                routesHistory.splice(routeIndex, 1);
+                closeModal('historyModal'); updateCartUI(); updateDashboard(); openReviewModal();
+            }
+        }
+
+        function reExportPDF(id) { const route = routesHistory.find(r => r.id === id); if(route) doExportPDF(route.orders, route.name, route.dateOut, route.obs); }
+        function reExportRouteImagePDF(id) { const route = routesHistory.find(r => r.id === id); if(route) doExportRouteImagePDF(route); }
+        function reExportExcel(id) { const route = routesHistory.find(r => r.id === id); if(route) doExportExcel(route.orders, route.name, route.dateOut, route.obs); }
+
+        function doExportRouteImagePDF(route) {
+            const { jsPDF } = window.jspdf;
+            const canvas = document.createElement('canvas');
+            canvas.width = 1600;
+            canvas.height = 1100;
+            const ctx = canvas.getContext('2d');
+            const waypoints = route.mapWaypoints && route.mapWaypoints.length ? route.mapWaypoints : [];
+            const stops = [
+                { label: 'Origem', address: route.mapOrigin || 'Origem nao informada', city: extractCityFromAddress(route.mapOrigin), type: 'origin' },
+                ...waypoints.map((wp, idx) => ({ label: `${idx + 1}`, address: wp.address || wp.label, city: extractCityFromAddress(wp.address || wp.label), clients: wp.label || '', type: 'stop' })),
+                { label: 'Retorno', address: route.mapDestination || 'Destino nao informado', city: extractCityFromAddress(route.mapDestination), type: 'destination' }
+            ];
+            let fDateOut = route.dateOut;
+            if(fDateOut && fDateOut.includes('-')) { let p = fDateOut.split('-'); fDateOut = `${p[2]}/${p[1]}/${p[0]}`; }
+
+            const totalVolumes = route.orders.reduce((sum, o) => sum + (o.volumes || 0), 0);
+            const totalCities = new Set(route.orders.map(o => `${o.cidade}/${o.uf}`)).size;
+
+            ctx.fillStyle = '#0a0a0f';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            const bg = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+            bg.addColorStop(0, '#171720');
+            bg.addColorStop(1, '#0a0a0f');
+            ctx.fillStyle = bg;
+            ctx.fillRect(30, 30, canvas.width - 60, canvas.height - 60);
+
+            ctx.fillStyle = '#E5C100';
+            ctx.font = '800 52px Arial';
+            ctx.fillText('MAPA DA ROTA', 70, 105);
+            ctx.fillStyle = '#f0f0f5';
+            ctx.font = '700 34px Arial';
+            ctx.fillText(route.name, 70, 155);
+            ctx.fillStyle = '#9b9bad';
+            ctx.font = '24px Arial';
+            ctx.fillText(`Saida prevista: ${fDateOut || 'Nao informada'}   |   Emitido em: ${new Date().toLocaleDateString('pt-BR')}`, 70, 192);
+
+            drawKpi(ctx, 70, 235, 'Pedidos', route.qty);
+            drawKpi(ctx, 300, 235, 'Peso', `${route.totalWeight.toLocaleString('pt-BR')} kg`);
+            drawKpi(ctx, 530, 235, 'Distancia', route.mapDistance || 'Nao calculada');
+            drawKpi(ctx, 760, 235, 'Tempo', route.mapDuration || 'Nao calculado');
+
+            const mapX = 70, mapY = 350, mapW = 900, mapH = 650;
+            roundRect(ctx, mapX, mapY, mapW, mapH, 24, '#111119', '#2a2a35');
+            drawMapGrid(ctx, mapX, mapY, mapW, mapH);
+
+            const points = buildRoutePoints(stops.length, mapX + 80, mapY + 90, mapW - 160, mapH - 180);
+            ctx.lineWidth = 12;
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+            ctx.strokeStyle = 'rgba(229, 193, 0, 0.25)';
+            drawRouteLine(ctx, points);
+            ctx.lineWidth = 6;
+            ctx.strokeStyle = '#E5C100';
+            drawRouteLine(ctx, points);
+
+            points.forEach((point, idx) => {
+                const stop = stops[idx];
+                const isDepot = stop.type !== 'stop';
+                ctx.beginPath();
+                ctx.arc(point.x, point.y, isDepot ? 23 : 19, 0, Math.PI * 2);
+                ctx.fillStyle = isDepot ? '#3399ff' : '#E5C100';
+                ctx.fill();
+                ctx.lineWidth = 5;
+                ctx.strokeStyle = '#0a0a0f';
+                ctx.stroke();
+                ctx.fillStyle = isDepot ? '#ffffff' : '#111119';
+                ctx.font = '800 17px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(stop.label.length > 3 ? (idx === 0 ? 'IN' : 'FIM') : stop.label, point.x, point.y + 1);
+                if(idx > 0 && idx < points.length - 1 && idx <= 10) {
+                    ctx.fillStyle = '#f0f0f5';
+                    ctx.font = '700 15px Arial';
+                    ctx.textAlign = point.y > mapY + mapH / 2 ? 'right' : 'left';
+                    ctx.textBaseline = 'alphabetic';
+                    ctx.fillText(stop.city || `Parada ${idx}`, point.x + (point.y > mapY + mapH / 2 ? -28 : 28), point.y - 24);
+                }
+            });
+            ctx.textAlign = 'left';
+            ctx.textBaseline = 'alphabetic';
+
+            const listX = 1010, listY = 235, listW = 520, listH = 765;
+            roundRect(ctx, listX, listY, listW, listH, 24, '#111119', '#2a2a35');
+            ctx.fillStyle = '#E5C100';
+            ctx.font = '800 28px Arial';
+            ctx.fillText('CIDADES E PARADAS', listX + 30, listY + 50);
+            ctx.fillStyle = '#9b9bad';
+            ctx.font = '20px Arial';
+            ctx.fillText(`${Math.max(stops.length - 2, 0)} paradas | ${totalCities} cidades`, listX + 30, listY + 82);
+
+            let y = listY + 125;
+            stops.slice(0, 13).forEach((stop, idx) => {
+                const marker = idx === 0 ? 'IN' : (idx === stops.length - 1 ? 'FIM' : String(idx));
+                ctx.fillStyle = stop.type === 'stop' ? '#E5C100' : '#3399ff';
+                ctx.beginPath();
+                ctx.arc(listX + 42, y - 8, 18, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = stop.type === 'stop' ? '#111119' : '#ffffff';
+                ctx.font = '800 12px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(marker, listX + 42, y - 8);
+                ctx.textAlign = 'left';
+                ctx.textBaseline = 'alphabetic';
+                ctx.fillStyle = '#f0f0f5';
+                ctx.font = '700 19px Arial';
+                ctx.fillText(stop.type === 'stop' ? `${idx}. ${stop.city || 'Cidade nao identificada'}` : `${stop.label}: ${stop.city || 'Base'}`, listX + 75, y - 12);
+                ctx.fillStyle = '#b8b8c8';
+                ctx.font = '17px Arial';
+                wrapCanvasText(ctx, stop.clients || stop.address, listX + 75, y + 14, listW - 105, 22, 2);
+                y += 68;
+            });
+            if(stops.length > 13) {
+                ctx.fillStyle = '#9b9bad';
+                ctx.font = '18px Arial';
+                ctx.fillText(`+ ${stops.length - 13} pontos adicionais no roteiro salvo`, listX + 30, listY + listH - 35);
+            }
+
+            if(route.obs && route.obs.trim() !== '') {
+                roundRect(ctx, 70, 1018, 1460, 52, 14, 'rgba(229, 193, 0, 0.09)', 'rgba(229, 193, 0, 0.35)');
+                ctx.fillStyle = '#f0f0f5';
+                ctx.font = '20px Arial';
+                ctx.fillText(`Observacao: ${route.obs}`, 95, 1051);
+            }
+
+            const imageData = canvas.toDataURL('image/jpeg', 0.94);
+            const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+            doc.addImage(imageData, 'JPEG', 0, 0, 297, 210);
+            const tableRows = stops.map((stop, idx) => [
+                idx === 0 ? 'Origem' : (idx === stops.length - 1 ? 'Retorno' : `${idx}`),
+                stop.city || 'Nao identificada',
+                stop.address || '',
+                stop.clients || ''
+            ]);
+            doc.addPage('a4', 'portrait');
+            doc.setFontSize(16);
+            doc.text(`Roteiro completo - ${route.name}`, 14, 18);
+            doc.setFontSize(10);
+            doc.text(`Distancia: ${route.mapDistance || 'Nao calculada'} | Tempo: ${route.mapDuration || 'Nao calculado'} | Cidades: ${totalCities}`, 14, 25);
+            doc.autoTable({
+                startY: 34,
+                head: [['Ordem', 'Cidade', 'Endereco', 'Clientes / Observacao']],
+                body: tableRows,
+                theme: 'grid',
+                styles: { fontSize: 8, cellPadding: 2, overflow: 'linebreak' },
+                headStyles: { fillColor: [229, 193, 0], textColor: [0, 0, 0], fontStyle: 'bold' },
+                columnStyles: { 0: { cellWidth: 18 }, 1: { cellWidth: 38 }, 2: { cellWidth: 78 }, 3: { cellWidth: 52 } }
+            });
+            doc.save(`Mapa_Rota_${route.name.replace(/\s+/g, '_')}.pdf`);
+        }
+
+        function extractCityFromAddress(address) {
+            const text = String(address || '').trim();
+            if(!text) return '';
+            const cityStateMatch = text.match(/([^,.-]+)\s*-\s*([A-Z]{2})(?:,|$)/i);
+            if(cityStateMatch) return `${cityStateMatch[1].trim()} - ${cityStateMatch[2].toUpperCase()}`;
+            const parts = text.split(',').map(p => p.trim()).filter(Boolean);
+            if(parts.length >= 2) return parts[parts.length - 2];
+            return parts[0] || text;
+        }
+
+        function drawKpi(ctx, x, y, label, value) {
+            roundRect(ctx, x, y, 200, 78, 16, '#1a1a24', '#2a2a35');
+            ctx.fillStyle = '#8b8b9e';
+            ctx.font = '700 16px Arial';
+            ctx.fillText(label.toUpperCase(), x + 18, y + 28);
+            ctx.fillStyle = '#f0f0f5';
+            ctx.font = '800 26px Arial';
+            ctx.fillText(String(value), x + 18, y + 60);
+        }
+
+        function roundRect(ctx, x, y, w, h, r, fill, stroke) {
+            ctx.beginPath();
+            ctx.moveTo(x + r, y);
+            ctx.lineTo(x + w - r, y);
+            ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+            ctx.lineTo(x + w, y + h - r);
+            ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+            ctx.lineTo(x + r, y + h);
+            ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+            ctx.lineTo(x, y + r);
+            ctx.quadraticCurveTo(x, y, x + r, y);
+            ctx.closePath();
+            ctx.fillStyle = fill;
+            ctx.fill();
+            ctx.strokeStyle = stroke;
+            ctx.lineWidth = 2;
+            ctx.stroke();
+        }
+
+        function drawMapGrid(ctx, x, y, w, h) {
+            ctx.strokeStyle = 'rgba(255,255,255,0.045)';
+            ctx.lineWidth = 1;
+            for(let i = 1; i < 9; i++) {
+                ctx.beginPath(); ctx.moveTo(x + (w / 9) * i, y + 20); ctx.lineTo(x + (w / 9) * i, y + h - 20); ctx.stroke();
+                ctx.beginPath(); ctx.moveTo(x + 20, y + (h / 9) * i); ctx.lineTo(x + w - 20, y + (h / 9) * i); ctx.stroke();
+            }
+        }
+
+        function buildRoutePoints(count, x, y, w, h) {
+            if(count <= 1) return [{ x: x + w / 2, y: y + h / 2 }];
+            const points = [];
+            for(let i = 0; i < count; i++) {
+                const t = i / (count - 1);
+                points.push({
+                    x: x + (w * t),
+                    y: y + (h * (0.50 + Math.sin(t * Math.PI * 2.6) * 0.30 + Math.cos(t * Math.PI * 5.2) * 0.08))
+                });
+            }
+            return points;
+        }
+
+        function drawRouteLine(ctx, points) {
+            ctx.beginPath();
+            points.forEach((point, idx) => {
+                if(idx === 0) ctx.moveTo(point.x, point.y);
+                else ctx.lineTo(point.x, point.y);
+            });
+            ctx.stroke();
+        }
+
+        function wrapCanvasText(ctx, text, x, y, maxWidth, lineHeight, maxLines) {
+            const words = String(text || '').split(' ');
+            let line = '', lines = [];
+            words.forEach(word => {
+                const testLine = line ? `${line} ${word}` : word;
+                if(ctx.measureText(testLine).width > maxWidth && line) {
+                    lines.push(line);
+                    line = word;
+                } else {
+                    line = testLine;
+                }
+            });
+            if(line) lines.push(line);
+            lines.slice(0, maxLines).forEach((currentLine, idx) => {
+                const clipped = idx === maxLines - 1 && lines.length > maxLines ? currentLine + '...' : currentLine;
+                ctx.fillText(clipped, x, y + (idx * lineHeight));
+            });
+        }
+
+        function doExportExcel(dataArray, name, dateOut, routeObs) {
+            const exportData = [];
+            dataArray.forEach(o => {
+                exportData.push({ "Filial": o.filial, "Número": o.numero, "Pedido do Cliente": o.pedidoCliente, "Atendido": "", "(NF) Número da Nota Fiscal": "", "Cód Operação": o.codOperacao, "Cod cliente": o.codCliente, "Nome cliente": o.nomeCliente, "Cidade": o.cidade, "UF": o.uf, "Vendedor": o.vendedor, "Data Entrada": o.dataEntrada, "Peso Bruto": o.peso, "Valor Total": o.valor, "Qtde Volumes": o.volumes, "Condicao pagamento": o.condPagamento, "Observação": o.obs });
+                if (o.isMerged && o.childOrder) {
+                    exportData.push({ "Filial": o.childOrder.filial, "Número": o.childOrder.numero, "Pedido do Cliente": o.childOrder.pedidoCliente, "Atendido": "", "(NF) Número da Nota Fiscal": "", "Cód Operação": o.childOrder.codOperacao, "Cod cliente": o.childOrder.codCliente, "Nome cliente": o.childOrder.nomeCliente, "Cidade": o.childOrder.cidade, "UF": o.childOrder.uf, "Vendedor": o.childOrder.vendedor, "Data Entrada": o.childOrder.dataEntrada, "Peso Bruto": o.childOrder.peso, "Valor Total": o.childOrder.valor, "Qtde Volumes": o.childOrder.volumes, "Condicao pagamento": o.childOrder.condPagamento, "Observação": o.childOrder.obs });
+                }
+            });
+
+            const ws = XLSX.utils.json_to_sheet(exportData);
+            if(routeObs && routeObs.trim() !== '') { let range = XLSX.utils.decode_range(ws['!ref']); XLSX.utils.sheet_add_aoa(ws, [["OBSERVAÇÕES DA ROTA PARA O FATURAMENTO:"],[routeObs]], {origin: {r: range.e.r + 3, c: 0}}); }
+            const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "Faturamento_Rota"); XLSX.writeFile(wb, `Faturamento_${name.replace(/\s+/g, '_')}.xlsx`);
+        }
+
+        function doExportPDF(dataArray, name, dateOut, routeObs) {
+            const { jsPDF } = window.jspdf; const doc = new jsPDF();
+            let fDateOut = dateOut; if(fDateOut && fDateOut.includes('-')) { let p = fDateOut.split('-'); fDateOut = `${p[2]}/${p[1]}/${p[0]}`; }
+            doc.setFontSize(18); doc.text("ROMANEIO DE CARGA - PREMIATTA", 14, 20); doc.setFontSize(11); doc.text(`Identificação da Rota: ${name.toUpperCase()}`, 14, 30); doc.text(`Data de Saída Prevista: ${fDateOut}`, 14, 36); doc.text(`Data de Emissão do Romaneio: ${new Date().toLocaleDateString('pt-BR')}`, 14, 42);
+
+            const tableRows = []; let tPeso = 0, tVol = 0;
+            dataArray.forEach(o => { tPeso += o.peso; tVol += o.volumes; tableRows.push([ o.filial, o.numero, o.nomeCliente.length > 25 ? o.nomeCliente.substring(0, 25) + '...' : o.nomeCliente, `${o.cidade}/${o.uf}`, o.peso.toFixed(1) + " kg", o.volumes ]); });
+            doc.autoTable({ startY: 50, head: [["Filial", "Pedido", "Cliente", "Cidade", "Peso", "Volumes"]], body: tableRows, theme: 'grid', styles: { fontSize: 8 }, headStyles: { fillColor: [255, 215, 0], textColor: [0, 0, 0], fontStyle: 'bold' }, alternateRowStyles: { fillColor: [245, 245, 245] } });
+
+            const finalY = doc.lastAutoTable.finalY || 50; doc.setFontSize(10); doc.text(`Total de Pedidos na Rota: ${dataArray.length}`, 14, finalY + 10); doc.text(`Peso Total da Carga: ${tPeso.toFixed(1)} kg`, 14, finalY + 16); doc.text(`Total de Volumes: ${tVol}`, 14, finalY + 22);
+
+            let currentY = finalY + 30;
+            if(routeObs && routeObs.trim() !== '') { doc.setFontSize(9); doc.setFont(undefined, 'bold'); doc.text("Observações Logísticas:", 14, currentY); doc.setFont(undefined, 'normal'); let splitObs = doc.splitTextToSize(routeObs, 180); doc.text(splitObs, 14, currentY + 5); currentY += (splitObs.length * 5) + 15; } else { currentY += 10; }
+            doc.line(120, currentY, 190, currentY); doc.setFontSize(8); doc.text("Assinatura do Motorista / Conferente", 130, currentY + 5); doc.save(`Romaneio_${name.replace(/\s+/g, '_')}.pdf`);
+        }
+    </script>
+
+
+
+
+<script>
+function initMapDuplicateRemoved() {
+
+    if (typeof google === 'undefined') {
+        console.error('Google Maps não carregou.');
+        return;
+    }
+
+    const mapElement = document.getElementById("mapContainer");
+
+    if (!mapElement) {
+        console.error('Elemento mapContainer não encontrado.');
+        return;
+    }
+
+    directionsService = new google.maps.DirectionsService();
+
+    directionsRenderer = new google.maps.DirectionsRenderer();
+
+    map = new google.maps.Map(mapElement, {
+        zoom: 8,
+        center: {
+            lat: -22.368,
+            lng: -46.944
+        }
+    });
+
+    directionsRenderer.setMap(map);
+
+    isMapInitialized = true;
+
+    console.log('Mapa carregado com sucesso.');
+}
+</script>
+
+
+
+
+</body>
+</html>

@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Premiatta - Roteirização de Pedidos</title>
+    <link rel="icon" href="assets/premiatta-logo.svg" type="image/svg+xml">
     
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -238,6 +239,11 @@
         .loading-box p { margin: 0; }
         .loading-spinner { width: 56px; height: 56px; margin: 8px auto 0; border-radius: 50%; border: 6px solid rgba(255,255,255,0.08); border-top-color: var(--primary); animation: spin 1s linear infinite; box-shadow: 0 6px 24px rgba(229,193,0,0.08); }
         @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* Header logo */
+        .header { display:flex; align-items:center; justify-content:space-between; padding: 18px 28px; gap: 12px; }
+        .header-brand { display:flex; align-items:center; gap:12px; }
+        .header-logo { height:46px; width:auto; display:block; }
         body.no-data-mode .cart-floating-bar, body.no-data-mode footer, body.no-data-mode .modal-overlay { display: none !important; }
 
         @media (max-width: 900px) {
@@ -329,6 +335,7 @@
 
    <header>
         <div class="header-brand">
+            <img src="assets/premiatta-logo.svg" alt="Premiatta" class="header-logo">
             <div class="header-title">
                 <div class="title-row">
                     <h1>DASHBOARD - LOGÍSTICA & ROTEIRIZAÇÃO</h1>
@@ -520,8 +527,17 @@
             document.body.classList.remove('no-data-mode');
         }
 
-        window.addEventListener('load', hideLoadingOverlay);
-        window.setTimeout(hideLoadingOverlay, 4000);
+        const loadingStart = Date.now();
+        const minLoadingMs = 8000; // mínimo de exibição do splash
+
+        window.addEventListener('load', function() {
+            const elapsed = Date.now() - loadingStart;
+            const wait = Math.max(0, minLoadingMs - elapsed);
+            setTimeout(hideLoadingOverlay, wait);
+        });
+
+        // Fallback: garante que o overlay seja removido após o tempo mínimo
+        setTimeout(function() { const overlay = document.getElementById('loadingOverlay'); if (overlay) hideLoadingOverlay(); }, minLoadingMs + 500);
 
         function initMap() {
             if(typeof google === 'undefined') return;

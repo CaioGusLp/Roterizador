@@ -15,6 +15,7 @@
     <script src="https://unpkg.com/xlsx/dist/xlsx.full.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
     
     <style>
@@ -140,8 +141,14 @@
         .btn-outline { background: transparent; border: 1px solid rgba(229, 193, 0, 0.4); color: var(--primary); padding: 8px 14px; border-radius: var(--radius-sm); cursor: pointer; font-size: 0.85rem; font-weight: 600; flex: 1; text-align: center; transition: 0.2s;}
         .btn-outline:hover { background: rgba(229, 193, 0, 0.1); border-color: var(--primary); }
         .btn-selected { background: rgba(229, 193, 0, 0.1); border: 1px solid var(--primary); color: var(--primary); padding: 8px 14px; border-radius: var(--radius-sm); font-size: 0.85rem; font-weight: 600; flex: 1; text-align: center; box-shadow: var(--shadow-glow);}
-        .btn-view { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: var(--text-main); padding: 8px 14px; border-radius: var(--radius-sm); cursor: pointer; font-size: 0.85rem; font-weight: 500; transition: 0.2s;}
+        .btn-view { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: var(--text-main); padding: 8px 14px; border-radius: var(--radius-sm); cursor: pointer; font-size: 0.85rem; font-weight: 500; transition: 0.2s; }
         .btn-view:hover { background: rgba(255,255,255,0.1); }
+        .btn-route-toggle { min-width: 110px; padding: 12px 18px; border-radius: 999px; border: 1px solid rgba(255,255,255,0.15); font-weight: 700; font-size: 0.95rem; transition: all 0.25s ease; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+        .btn-route-toggle:hover { transform: translateY(-1px); }
+        .btn-route-forward { background: linear-gradient(135deg, rgba(51,153,255,0.15), rgba(51,153,255,0.3)); color: #80c4ff; border-color: rgba(51,153,255,0.35); }
+        .btn-route-forward.active { background: linear-gradient(135deg, rgba(51,153,255,0.35), rgba(51,153,255,0.55)); color: #fff; border-color: #3399ff; box-shadow: 0 10px 25px rgba(51,153,255,0.25); }
+        .btn-route-return { background: linear-gradient(135deg, rgba(255,77,77,0.12), rgba(255,77,77,0.25)); color: #ff9fa2; border-color: rgba(255,77,77,0.35); }
+        .btn-route-return.active { background: linear-gradient(135deg, rgba(255,77,77,0.3), rgba(255,77,77,0.55)); color: #fff; border-color: #ff4d4d; box-shadow: 0 10px 25px rgba(255,77,77,0.22); }
         .btn-remove-row { background: transparent; color: var(--danger); border: 1px solid transparent; font-weight: bold; cursor: pointer; padding: 6px 10px; border-radius: 6px; font-size: 1rem; transition: 0.2s; }
         .btn-remove-row:hover { background: rgba(255, 77, 77, 0.1); border-color: rgba(255, 77, 77, 0.3); }
 
@@ -348,10 +355,6 @@
                     <input type="text" id="mapDestination" value="Av. Ver. José Maria Rangel - Parque Industrial Getulio Vargas, Mogi Guaçu - SP, 13849-252">
                 </div>
                 <button class="btn-export" style="width: auto; align-self: flex-end; padding: 12px 20px; font-size: 0.9rem; background: var(--bg-hover); color: var(--primary); border: 1px solid var(--border-color); box-shadow: none;" onclick="calculateRoute(false)">🔄 Recalcular Trajeto</button>
-                <div style="width: 100%; display: flex; gap: 10px; padding: 10px; background: rgba(51, 153, 255, 0.1); border-radius: var(--radius-sm); border: 1px solid rgba(51, 153, 255, 0.2);">
-                    <button id="btnRouteForward" class="btn-outline" style="flex: 1; border-color: var(--blue); color: var(--blue);" onclick="showRoute('forward')" title="Visualizar trajeto de ida">↓ Ida</button>
-                    <button id="btnRouteReturn" class="btn-outline" style="flex: 1; border-color: rgba(255,255,255,0.3); color: var(--text-muted);" onclick="showRoute('return')" title="Visualizar trajeto de volta">↑ Volta</button>
-                </div>
             </div>
 
             <div class="map-layout">
@@ -372,7 +375,8 @@
                 </div>
             </div>
             <div style="text-align: right; margin-top: 15px; display: flex; justify-content: flex-end; gap: 12px; flex-wrap: wrap;">
-                <button class="cart-btn" onclick="exportCurrentRouteImagePDF()" style="padding: 10px 25px; background: #d32f2f; color: #fff;">Exportar PDF</button>
+                <button class="cart-btn" onclick="openRouteInGoogleMaps()" style="padding: 10px 25px; background: #2d8cff; color: #fff;">Abrir no Google Maps</button>
+                <button class="cart-btn" onclick="openRouteInWaze()" style="padding: 10px 25px; background: #3399ff; color: #fff;">Abrir no Waze</button>
                 <button class="cart-btn" id="mapSaveBtn" onclick="saveMapOrderAndClose()" style="padding: 10px 25px;">Aplicar Esta Rota</button>
             </div>
         </div>
@@ -404,13 +408,14 @@
         let mapNeedsUpdate = true; // Controla se o mapa precisa ser recriado a partir do carrinho
         let lastMapDistanceText = 'Nao calculada';
         let lastMapDurationText = 'Nao calculado';
+        let routeMarkers = [];
 
         function initMap() {
             if(typeof google === 'undefined') return;
             directionsService = new google.maps.DirectionsService();
             directionsRenderer = new google.maps.DirectionsRenderer({
                 polylineOptions: { strokeColor: '#E5C100', strokeWeight: 5, strokeOpacity: 0.8 },
-                suppressMarkers: false
+                suppressMarkers: true
             });
             
             const darkMapStyle = [
@@ -432,7 +437,7 @@
 
             map = new google.maps.Map(document.getElementById("mapContainer"), {
                 zoom: 8, center: { lat: -22.368, lng: -46.944 }, backgroundColor: '#1a1a24', mapTypeId: 'roadmap',
-                styles: darkMapStyle, disableDefaultUI: true, zoomControl: true
+                styles: darkMapStyle, disableDefaultUI: true, zoomControl: false, gestureHandling: 'none', disableDoubleClickZoom: true, streetViewControl: false, fullscreenControl: false
             });
             directionsRenderer.setMap(map);
             isMapInitialized = true;
@@ -631,7 +636,7 @@
                 let isChecked = selectedOrdersIds.has(o.uid);
                 let filialDisplay = o.isMerged ? `<span class="badge-merged" title="Pedido Mesclado">100 + 777 ✨</span>` : o.filial;
                 let endCompleto = `${o.endereco}, ${o.numeroEnd} - ${o.bairro}, ${o.cidade} - ${o.uf}, ${o.cep}`;
-                let deliveryLetter = getDeliveryLetter(endCompleto);
+                let deliveryLetter = getDeliveryLetter(o.uid, endCompleto);
                 tbody += `<tr><td style="text-align: center;"><input type="checkbox" class="modal-order-cb" value="${o.uid}" onchange="toggleOrderSelection('${o.uid}', this.checked)" ${isChecked ? 'checked' : ''}></td><td style="text-align: center; font-weight: 900; color: var(--primary); font-size: 1rem; background: rgba(229, 193, 0, 0.1); border-radius: 4px; padding: 3px; min-width: 30px;">${deliveryLetter}</td><td>${filialDisplay}</td><td><strong>${o.numero}</strong></td><td>${o.pedidoCliente}</td><td title="${o.nomeCliente}">${String(o.nomeCliente).substring(0, 25)}...</td><td style="color:var(--warning); font-weight:700;">${o.peso.toLocaleString('pt-BR')} kg</td><td style="color:var(--success); font-weight:700;">${o.valor.toLocaleString('pt-BR', {style:'currency', currency:'BRL'})}</td><td class="obs-text" title="${o.obs || 'Sem observação'}">${o.obs || '-'}</td></tr>`;
             });
             document.getElementById('modalBody').innerHTML = `<div style="display:flex; justify-content:space-between; align-items: flex-end; margin-bottom: 25px; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 15px;"><div><h2 style="color: var(--primary); margin: 0 0 8px 0; font-size: 1.8rem; font-weight: 800;">📍 Pendências em ${cidade} - ${uf}</h2></div></div><div class="table-responsive"><table class="orders-table"><thead><tr><th style="width: 40px;"></th><th style="width: 40px;">Entrega</th><th>Filial</th><th>Número</th><th>Ped. Cliente</th><th>Cliente</th><th>Peso</th><th>Valor</th><th>Observação</th></tr></thead><tbody>${tbody}</tbody></table></div>`;
@@ -649,7 +654,31 @@
             if(selectedOrdersIds.size === 0) { closeModal('reviewModal'); } else { renderReviewTable(); } 
         }
 
-        function getDeliveryLetter(endereco) {\n            // Busca o índice do waypoint baseado no endereço\n            const wpIndex = currentMapWaypoints.findIndex(wp => \n                wp.address.toLowerCase().includes(endereco.toLowerCase()) ||\n                endereco.toLowerCase().includes(wp.address.toLowerCase())\n            );\n            return wpIndex >= 0 ? String.fromCharCode(65 + wpIndex) : '-';\n        }\n\n        function renderReviewTable() {\n            const selectedData = rawData.filter(o => selectedOrdersIds.has(o.uid));\n            let tPeso = 0, tValor = 0, tVol = 0, tbody = '';\n            selectedData.forEach(o => {\n                tPeso += o.peso; tValor += o.valor; tVol += o.volumes;\n                let filialDisplay = o.isMerged ? `<span class=\"badge-merged\" style=\"padding: 2px 6px; font-size: 0.65rem;\">100 + 777</span>` : o.filial;\n                let endCompleto = `${o.endereco}, ${o.numeroEnd} - ${o.bairro}, ${o.cidade} - ${o.uf}, ${o.cep}`;\n                let deliveryLetter = getDeliveryLetter(endCompleto);\n                tbody += `<tr><td style=\"text-align: center;\"><button class=\"btn-remove-row\" onclick=\"removeOrderFromReview('${o.uid}')\" title=\"Remover da Rota\">✖</button></td><td style=\"text-align: center; font-weight: 900; color: var(--primary); font-size: 1.1rem; background: rgba(229, 193, 0, 0.1); border-radius: 6px; padding: 5px; min-width: 40px;\">${deliveryLetter}</td><td><strong>${o.numero}</strong> <br> ${filialDisplay}</td><td title=\"${o.nomeCliente}\">${String(o.nomeCliente).substring(0, 30)}...</td><td>${o.cidade} / ${o.uf}</td><td style=\"color:var(--warning); font-weight:700;\">${o.peso.toLocaleString('pt-BR')} kg</td><td style=\"color:var(--success); font-weight:700;\">${o.valor.toLocaleString('pt-BR', {style:'currency', currency:'BRL'})}</td></tr>`;\n            });\n            document.getElementById('reviewSummary').innerHTML = `<div style=\"background: var(--bg-input); padding: 20px; border-radius: var(--radius-sm); flex: 1; border-left: 4px solid var(--primary); min-width: 150px;\"><span style=\"font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700;\">Pedidos</span><br><strong style=\"font-size: 1.8rem; color: #fff;\">${selectedData.length}</strong></div><div style=\"background: var(--bg-input); padding: 20px; border-radius: var(--radius-sm); flex: 1; border-left: 4px solid var(--blue); min-width: 150px;\"><span style=\"font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700;\">Volumes</span><br><strong style=\"font-size: 1.8rem; color: var(--blue);\">${tVol}</strong></div><div style=\"background: var(--bg-input); padding: 20px; border-radius: var(--radius-sm); flex: 1; border-left: 4px solid var(--warning); min-width: 150px;\"><span style=\"font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700;\">Peso Total</span><br><strong style=\"font-size: 1.8rem; color: var(--warning);\">${tPeso.toLocaleString('pt-BR', {minimumFractionDigits: 1})} kg</strong></div>`;\n            document.querySelector('#reviewTable tbody').innerHTML = tbody;\n        }
+        function getDeliveryLetter(uid, endereco) {
+            if(Array.isArray(currentMapWaypoints)) {
+                const wpIndex = currentMapWaypoints.findIndex(wp => 
+                    (Array.isArray(wp.uids) && wp.uids.includes(uid)) ||
+                    wp.address.toLowerCase().includes(endereco.toLowerCase()) ||
+                    endereco.toLowerCase().includes(wp.address.toLowerCase())
+                );
+                return wpIndex >= 0 ? String(wpIndex + 1) : '-';
+            }
+            return '-';
+        }
+
+        function renderReviewTable() {
+            const selectedData = rawData.filter(o => selectedOrdersIds.has(o.uid));
+            let tPeso = 0, tValor = 0, tVol = 0, tbody = '';
+            selectedData.forEach(o => {
+                tPeso += o.peso; tValor += o.valor; tVol += o.volumes;
+                let filialDisplay = o.isMerged ? `<span class="badge-merged" style="padding: 2px 6px; font-size: 0.65rem;">100 + 777</span>` : o.filial;
+                let endCompleto = `${o.endereco}, ${o.numeroEnd} - ${o.bairro}, ${o.cidade} - ${o.uf}, ${o.cep}`;
+                let deliveryLetter = getDeliveryLetter(o.uid, endCompleto);
+                tbody += `<tr><td style="text-align: center;"><button class="btn-remove-row" onclick="removeOrderFromReview('${o.uid}')" title="Remover da Rota">✖</button></td><td style="text-align: center; font-weight: 900; color: var(--primary); font-size: 1.1rem; background: rgba(229, 193, 0, 0.1); border-radius: 6px; padding: 5px; min-width: 40px;">${deliveryLetter}</td><td><strong>${o.numero}</strong> <br> ${filialDisplay}</td><td title="${o.nomeCliente}">${String(o.nomeCliente).substring(0, 30)}...</td><td>${o.cidade} / ${o.uf}</td><td style="color:var(--warning); font-weight:700;">${o.peso.toLocaleString('pt-BR')} kg</td><td style="color:var(--success); font-weight:700;">${o.valor.toLocaleString('pt-BR', {style:'currency', currency:'BRL'})}</td></tr>`;
+            });
+            document.getElementById('reviewSummary').innerHTML = `<div style="background: var(--bg-input); padding: 20px; border-radius: var(--radius-sm); flex: 1; border-left: 4px solid var(--primary); min-width: 150px;"><span style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Pedidos</span><br><strong style="font-size: 1.8rem; color: #fff;">${selectedData.length}</strong></div><div style="background: var(--bg-input); padding: 20px; border-radius: var(--radius-sm); flex: 1; border-left: 4px solid var(--blue); min-width: 150px;"><span style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Volumes</span><br><strong style="font-size: 1.8rem; color: var(--blue);">${tVol}</strong></div><div style="background: var(--bg-input); padding: 20px; border-radius: var(--radius-sm); flex: 1; border-left: 4px solid var(--warning); min-width: 150px;"><span style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Peso Total</span><br><strong style="font-size: 1.8rem; color: var(--warning);">${tPeso.toLocaleString('pt-BR', {minimumFractionDigits: 1})} kg</strong></div>`;
+            document.querySelector('#reviewTable tbody').innerHTML = tbody;
+        }
 
         // ==========================================
         //  INTEGRAÇÃO GOOGLE MAPS (ROTEIRIZAÇÃO)
@@ -692,13 +721,14 @@
                     selectedData.forEach(o => {
                         let endCompleto = `${o.endereco}, ${o.numeroEnd} - ${o.bairro}, ${o.cidade} - ${o.uf}, ${o.cep}`;
                         if(!uniqueAddresses[endCompleto]) {
-                            uniqueAddresses[endCompleto] = { address: endCompleto, clientes: new Set() };
+                            uniqueAddresses[endCompleto] = { address: endCompleto, clientes: new Set(), uids: [] };
                         }
                         uniqueAddresses[endCompleto].clientes.add(o.nomeCliente);
+                        uniqueAddresses[endCompleto].uids.push(o.uid);
                     });
 
                     currentMapWaypoints = Object.values(uniqueAddresses).map((val, idx) => {
-                        return { id: 'wp_'+idx, address: val.address, label: Array.from(val.clientes).join(', ') };
+                        return { id: 'wp_'+idx, address: val.address, label: Array.from(val.clientes).join(', '), uids: val.uids };
                     });
 
                     document.getElementById('mapOrigin').value = "Av. Ver. José Maria Rangel - Parque Industrial Getulio Vargas, Mogi Guaçu - SP, 13849-252";
@@ -724,7 +754,7 @@
         function addManualWaypoint() {
             let addr = prompt("Digite o endereço completo da nova parada (Ex: Rua XYZ, 100, Bairro, Cidade - SP):");
             if(addr && addr.trim() !== '') {
-                currentMapWaypoints.push({ id: 'manual_'+Date.now(), address: addr, label: 'Parada Manual Extra' });
+                currentMapWaypoints.push({ id: 'manual_'+Date.now(), address: addr, label: 'Parada Manual Extra', uids: [] });
                 renderDraggableList();
                 calculateRoute(false);
             }
@@ -732,10 +762,15 @@
 
         function showRoute(direction) {
             currentRouteDirection = direction;
-            document.getElementById('btnRouteForward').style.borderColor = direction === 'forward' ? 'var(--blue)' : 'rgba(255,255,255,0.3)';
-            document.getElementById('btnRouteForward').style.color = direction === 'forward' ? 'var(--blue)' : 'var(--text-muted)';
-            document.getElementById('btnRouteReturn').style.borderColor = direction === 'return' ? '#ff6b6b' : 'rgba(255,255,255,0.3)';
-            document.getElementById('btnRouteReturn').style.color = direction === 'return' ? '#ff6b6b' : 'var(--text-muted)';
+            const forwardBtn = document.getElementById('btnRouteForward');
+            const returnBtn = document.getElementById('btnRouteReturn');
+            if (direction === 'forward') {
+                forwardBtn.classList.add('active');
+                returnBtn.classList.remove('active');
+            } else {
+                forwardBtn.classList.remove('active');
+                returnBtn.classList.add('active');
+            }
             calculateRoute(false);
         }
 
@@ -764,6 +799,8 @@
             }, (response, status) => {
                 if (status === "OK") {
                     directionsRenderer.setDirections(response);
+                    map.fitBounds(response.routes[0].bounds);
+                    renderRouteMarkers(response);
                     
                     if(optimize) {
                         const route = response.routes[0];
@@ -772,6 +809,7 @@
                         order.forEach(idx => { newWaypoints.push(currentMapWaypoints[idx]); });
                         currentMapWaypoints = newWaypoints;
                         renderDraggableList(); 
+                        renderRouteMarkers(response);
                     }
                     
                     let dist = 0, dur = 0;
@@ -798,9 +836,9 @@
                 div.className = 'draggable-item';
                 div.draggable = true;
                 div.dataset.index = i;
-                const letterLabel = String.fromCharCode(65 + i); // A, B, C, etc.
+                const itemLabel = String(i + 1);
                 div.innerHTML = `
-                    <div style="font-weight:900; color:var(--primary); font-size:1.3rem; min-width:40px; text-align:center; background:rgba(229, 193, 0, 0.15); border-radius:6px; padding:5px; height:40px; display:flex; align-items:center; justify-content:center;">${letterLabel}</div>
+                    <div style="font-weight:900; color:var(--primary); font-size:1.3rem; min-width:40px; text-align:center; background:rgba(229, 193, 0, 0.15); border-radius:6px; padding:5px; height:40px; display:flex; align-items:center; justify-content:center;">${itemLabel}</div>
                     <div style="flex:1; overflow:hidden;">
                         <div style="font-size:0.85rem; color:#fff; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${wp.label}">${wp.label}</div>
                         <div style="font-size:0.7rem; color:var(--text-muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${wp.address}">${wp.address}</div>
@@ -840,28 +878,70 @@
             closeModal('mapModal');
         }
 
-        function exportCurrentRouteImagePDF() {
-            const routeData = selectedOrdersIds.size > 0 ? rawData.filter(o => selectedOrdersIds.has(o.uid)) : [];
-            let tPeso = 0, tValor = 0;
-            routeData.forEach(o => { tPeso += o.peso; tValor += o.valor; });
+        function openRouteInGoogleMaps() {
+            if(!currentMapWaypoints.length) {
+                alert('A rota não está definida. Adicione pelo menos uma parada.');
+                return;
+            }
+            const origin = encodeURIComponent(document.getElementById('mapOrigin').value);
+            const destination = encodeURIComponent(document.getElementById('mapDestination').value);
+            const waypoints = currentMapWaypoints.map(wp => encodeURIComponent(wp.address || wp.label)).join('|');
+            const url = `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}${waypoints ? `&waypoints=${waypoints}` : ''}&travelmode=driving`;
+            window.open(url, '_blank');
+        }
 
-            const tempRoute = {
-                name: (document.getElementById('inputRouteName').value || `Rota_${routesHistory.length + 1}`).toUpperCase(),
-                dateOut: document.getElementById('inputRouteDate').value || 'NÃ£o informada',
-                obs: document.getElementById('inputRouteObs').value || '',
-                date: new Date().toLocaleString('pt-BR'),
-                orders: routeData,
-                totalWeight: tPeso,
-                totalValue: tValor,
-                qty: routeData.length,
-                mapWaypoints: currentMapWaypoints,
-                mapOrigin: document.getElementById('mapOrigin').value,
-                mapDestination: document.getElementById('mapDestination').value,
-                mapDistance: lastMapDistanceText,
-                mapDuration: lastMapDurationText
+        function openRouteInWaze() {
+            if(!currentMapWaypoints.length) {
+                alert('A rota não está definida. Adicione pelo menos uma parada.');
+                return;
+            }
+            const destination = encodeURIComponent(document.getElementById('mapDestination').value);
+            const url = `https://www.waze.com/ul?q=${destination}&navigate=yes`;
+            window.open(url, '_blank');
+        }
+
+        function clearRouteMarkers() {
+            routeMarkers.forEach(marker => marker.setMap(null));
+            routeMarkers = [];
+        }
+
+        function renderRouteMarkers(response) {
+            if(!response || !response.routes || !response.routes[0]) return;
+            clearRouteMarkers();
+            const route = response.routes[0];
+            const legs = route.legs || [];
+            if(legs.length === 0) return;
+
+            const icon = {
+                path: google.maps.SymbolPath.CIRCLE,
+                scale: 14,
+                fillColor: '#E5C100',
+                fillOpacity: 1,
+                strokeColor: '#111119',
+                strokeWeight: 4
             };
 
-            doExportRouteImagePDF(tempRoute);
+            const startMarker = new google.maps.Marker({
+                position: legs[0].start_location,
+                map: map,
+                icon: icon,
+                label: { text: 'IN', color: '#111119', fontWeight: '700', fontSize: '12px' },
+                title: 'Origem'
+            });
+            routeMarkers.push(startMarker);
+
+            legs.forEach((leg, idx) => {
+                const isLast = idx === legs.length - 1;
+                const label = isLast ? 'FIM' : String(idx + 1);
+                const marker = new google.maps.Marker({
+                    position: leg.end_location,
+                    map: map,
+                    icon: icon,
+                    label: { text: label, color: '#111119', fontWeight: '700', fontSize: '12px' },
+                    title: isLast ? 'Destino' : `Parada ${label}`
+                });
+                routeMarkers.push(marker);
+            });
         }
 
         // ==========================================
@@ -948,7 +1028,98 @@
         function reExportExcel(id) { const route = routesHistory.find(r => r.id === id); if(route) doExportExcel(route.orders, route.name, route.dateOut, route.obs); }
 
         function doExportRouteImagePDF(route) {
-            const { jsPDF } = window.jspdf;
+            generateRouteMapImage(route).then(imageData => {
+                const { jsPDF } = window.jspdf;
+                const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+                doc.addImage(imageData, 'JPEG', 0, 0, 297, 210);
+
+                const waypoints = route.mapWaypoints && route.mapWaypoints.length ? route.mapWaypoints : [];
+                const stops = [
+                    { label: 'Origem', address: route.mapOrigin || 'Origem nao informada', city: extractCityFromAddress(route.mapOrigin), type: 'origin' },
+                    ...waypoints.map((wp, idx) => ({ label: String(idx + 1), address: wp.address || wp.label, city: extractCityFromAddress(wp.address || wp.label), clients: wp.label || '', type: 'stop' })),
+                    { label: 'Retorno', address: route.mapDestination || 'Destino nao informado', city: extractCityFromAddress(route.mapDestination), type: 'destination' }
+                ];
+
+                const totalCities = new Set(route.orders.map(o => `${o.cidade}/${o.uf}`)).size;
+                const tableRows = stops.map((stop, idx) => [
+                    idx === 0 ? 'Origem' : (idx === stops.length - 1 ? 'Retorno' : `${stop.label}`),
+                    stop.city || 'Nao identificada',
+                    stop.address || '',
+                    stop.clients || ''
+                ]);
+
+                doc.addPage('a4', 'portrait');
+                doc.setFontSize(16);
+                doc.text(`Roteiro completo - ${route.name}`, 14, 18);
+                doc.setFontSize(10);
+                doc.text(`Distancia: ${route.mapDistance || 'Nao calculada'} | Tempo: ${route.mapDuration || 'Nao calculado'} | Cidades: ${totalCities}`, 14, 25);
+                doc.autoTable({
+                    startY: 34,
+                    head: [['Ordem', 'Cidade', 'Endereco', 'Clientes / Observacao']],
+                    body: tableRows,
+                    theme: 'grid',
+                    styles: { fontSize: 8, cellPadding: 2, overflow: 'linebreak' },
+                    headStyles: { fillColor: [229, 193, 0], textColor: [0, 0, 0], fontStyle: 'bold' },
+                    columnStyles: { 0: { cellWidth: 18 }, 1: { cellWidth: 38 }, 2: { cellWidth: 78 }, 3: { cellWidth: 52 } }
+                });
+                doc.save(`Mapa_Rota_${route.name.replace(/\s+/g, '_')}.pdf`);
+            }).catch(error => {
+                console.warn('Falha ao gerar mapa em PDF:', error);
+                alert('Não foi possível captar o mapa real. Gerando PDF com mapa ilustrado.');
+                const imageData = drawRouteMapCanvas(route);
+                const { jsPDF } = window.jspdf;
+                const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+                doc.addImage(imageData, 'JPEG', 0, 0, 297, 210);
+
+                const waypoints = route.mapWaypoints && route.mapWaypoints.length ? route.mapWaypoints : [];
+                const stops = [
+                    { label: 'Origem', address: route.mapOrigin || 'Origem nao informada', city: extractCityFromAddress(route.mapOrigin), type: 'origin' },
+                    ...waypoints.map((wp, idx) => ({ label: String(idx + 1), address: wp.address || wp.label, city: extractCityFromAddress(wp.address || wp.label), clients: wp.label || '', type: 'stop' })),
+                    { label: 'Retorno', address: route.mapDestination || 'Destino nao informado', city: extractCityFromAddress(route.mapDestination), type: 'destination' }
+                ];
+
+                const totalCities = new Set(route.orders.map(o => `${o.cidade}/${o.uf}`)).size;
+                const tableRows = stops.map((stop, idx) => [
+                    idx === 0 ? 'Origem' : (idx === stops.length - 1 ? 'Retorno' : `${stop.label}`),
+                    stop.city || 'Nao identificada',
+                    stop.address || '',
+                    stop.clients || ''
+                ]);
+                doc.addPage('a4', 'portrait');
+                doc.setFontSize(16);
+                doc.text(`Roteiro completo - ${route.name}`, 14, 18);
+                doc.setFontSize(10);
+                doc.text(`Distancia: ${route.mapDistance || 'Nao calculada'} | Tempo: ${route.mapDuration || 'Nao calculado'} | Cidades: ${totalCities}`, 14, 25);
+                doc.autoTable({
+                    startY: 34,
+                    head: [['Ordem', 'Cidade', 'Endereco', 'Clientes / Observacao']],
+                    body: tableRows,
+                    theme: 'grid',
+                    styles: { fontSize: 8, cellPadding: 2, overflow: 'linebreak' },
+                    headStyles: { fillColor: [229, 193, 0], textColor: [0, 0, 0], fontStyle: 'bold' },
+                    columnStyles: { 0: { cellWidth: 18 }, 1: { cellWidth: 38 }, 2: { cellWidth: 78 }, 3: { cellWidth: 52 } }
+                });
+                doc.save(`Mapa_Rota_${route.name.replace(/\s+/g, '_')}.pdf`);
+            });
+        }
+
+        function generateRouteMapImage(route) {
+            return new Promise((resolve, reject) => {
+                const mapElement = document.getElementById('mapContainer');
+                if (typeof html2canvas !== 'undefined' && mapElement) {
+                    html2canvas(mapElement, { backgroundColor: '#0a0a0f', useCORS: true, logging: false, scale: 2 })
+                        .then(canvas => resolve(canvas.toDataURL('image/jpeg', 0.95)))
+                        .catch(err => {
+                            console.warn('html2canvas falhou:', err);
+                            resolve(drawRouteMapCanvas(route));
+                        });
+                } else {
+                    resolve(drawRouteMapCanvas(route));
+                }
+            });
+        }
+
+        function drawRouteMapCanvas(route) {
             const canvas = document.createElement('canvas');
             canvas.width = 1600;
             canvas.height = 1100;
@@ -956,15 +1127,12 @@
             const waypoints = route.mapWaypoints && route.mapWaypoints.length ? route.mapWaypoints : [];
             const stops = [
                 { label: 'Origem', address: route.mapOrigin || 'Origem nao informada', city: extractCityFromAddress(route.mapOrigin), type: 'origin' },
-                ...waypoints.map((wp, idx) => ({ label: `${idx + 1}`, address: wp.address || wp.label, city: extractCityFromAddress(wp.address || wp.label), clients: wp.label || '', type: 'stop' })),
+                ...waypoints.map((wp, idx) => ({ label: String(idx + 1), address: wp.address || wp.label, city: extractCityFromAddress(wp.address || wp.label), clients: wp.label || '', type: 'stop' })),
                 { label: 'Retorno', address: route.mapDestination || 'Destino nao informado', city: extractCityFromAddress(route.mapDestination), type: 'destination' }
             ];
             let fDateOut = route.dateOut;
             if(fDateOut && fDateOut.includes('-')) { let p = fDateOut.split('-'); fDateOut = `${p[2]}/${p[1]}/${p[0]}`; }
-
-            const totalVolumes = route.orders.reduce((sum, o) => sum + (o.volumes || 0), 0);
             const totalCities = new Set(route.orders.map(o => `${o.cidade}/${o.uf}`)).size;
-
             ctx.fillStyle = '#0a0a0f';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
             const bg = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
@@ -972,7 +1140,6 @@
             bg.addColorStop(1, '#0a0a0f');
             ctx.fillStyle = bg;
             ctx.fillRect(30, 30, canvas.width - 60, canvas.height - 60);
-
             ctx.fillStyle = '#E5C100';
             ctx.font = '800 52px Arial';
             ctx.fillText('MAPA DA ROTA', 70, 105);
@@ -982,16 +1149,13 @@
             ctx.fillStyle = '#9b9bad';
             ctx.font = '24px Arial';
             ctx.fillText(`Saida prevista: ${fDateOut || 'Nao informada'}   |   Emitido em: ${new Date().toLocaleDateString('pt-BR')}`, 70, 192);
-
             drawKpi(ctx, 70, 235, 'Pedidos', route.qty);
             drawKpi(ctx, 300, 235, 'Peso', `${route.totalWeight.toLocaleString('pt-BR')} kg`);
             drawKpi(ctx, 530, 235, 'Distancia', route.mapDistance || 'Nao calculada');
             drawKpi(ctx, 760, 235, 'Tempo', route.mapDuration || 'Nao calculado');
-
             const mapX = 70, mapY = 350, mapW = 900, mapH = 650;
             roundRect(ctx, mapX, mapY, mapW, mapH, 24, '#111119', '#2a2a35');
             drawMapGrid(ctx, mapX, mapY, mapW, mapH);
-
             const points = buildRoutePoints(stops.length, mapX + 80, mapY + 90, mapW - 160, mapH - 180);
             ctx.lineWidth = 12;
             ctx.lineCap = 'round';
@@ -1001,7 +1165,6 @@
             ctx.lineWidth = 6;
             ctx.strokeStyle = '#E5C100';
             drawRouteLine(ctx, points);
-
             points.forEach((point, idx) => {
                 const stop = stops[idx];
                 const isDepot = stop.type !== 'stop';
@@ -1027,7 +1190,6 @@
             });
             ctx.textAlign = 'left';
             ctx.textBaseline = 'alphabetic';
-
             const listX = 1010, listY = 235, listW = 520, listH = 765;
             roundRect(ctx, listX, listY, listW, listH, 24, '#111119', '#2a2a35');
             ctx.fillStyle = '#E5C100';
@@ -1036,7 +1198,6 @@
             ctx.fillStyle = '#9b9bad';
             ctx.font = '20px Arial';
             ctx.fillText(`${Math.max(stops.length - 2, 0)} paradas | ${totalCities} cidades`, listX + 30, listY + 82);
-
             let y = listY + 125;
             stops.slice(0, 13).forEach((stop, idx) => {
                 const marker = idx === 0 ? 'IN' : (idx === stops.length - 1 ? 'FIM' : String(idx));
@@ -1064,38 +1225,13 @@
                 ctx.font = '18px Arial';
                 ctx.fillText(`+ ${stops.length - 13} pontos adicionais no roteiro salvo`, listX + 30, listY + listH - 35);
             }
-
             if(route.obs && route.obs.trim() !== '') {
                 roundRect(ctx, 70, 1018, 1460, 52, 14, 'rgba(229, 193, 0, 0.09)', 'rgba(229, 193, 0, 0.35)');
                 ctx.fillStyle = '#f0f0f5';
                 ctx.font = '20px Arial';
                 ctx.fillText(`Observacao: ${route.obs}`, 95, 1051);
             }
-
-            const imageData = canvas.toDataURL('image/jpeg', 0.94);
-            const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
-            doc.addImage(imageData, 'JPEG', 0, 0, 297, 210);
-            const tableRows = stops.map((stop, idx) => [
-                idx === 0 ? 'Origem' : (idx === stops.length - 1 ? 'Retorno' : `${idx}`),
-                stop.city || 'Nao identificada',
-                stop.address || '',
-                stop.clients || ''
-            ]);
-            doc.addPage('a4', 'portrait');
-            doc.setFontSize(16);
-            doc.text(`Roteiro completo - ${route.name}`, 14, 18);
-            doc.setFontSize(10);
-            doc.text(`Distancia: ${route.mapDistance || 'Nao calculada'} | Tempo: ${route.mapDuration || 'Nao calculado'} | Cidades: ${totalCities}`, 14, 25);
-            doc.autoTable({
-                startY: 34,
-                head: [['Ordem', 'Cidade', 'Endereco', 'Clientes / Observacao']],
-                body: tableRows,
-                theme: 'grid',
-                styles: { fontSize: 8, cellPadding: 2, overflow: 'linebreak' },
-                headStyles: { fillColor: [229, 193, 0], textColor: [0, 0, 0], fontStyle: 'bold' },
-                columnStyles: { 0: { cellWidth: 18 }, 1: { cellWidth: 38 }, 2: { cellWidth: 78 }, 3: { cellWidth: 52 } }
-            });
-            doc.save(`Mapa_Rota_${route.name.replace(/\s+/g, '_')}.pdf`);
+            return canvas.toDataURL('image/jpeg', 0.94);
         }
 
         function extractCityFromAddress(address) {
@@ -1221,40 +1357,7 @@
 
 
 
-<script>
-function initMapDuplicateRemoved() {
 
-    if (typeof google === 'undefined') {
-        console.error('Google Maps não carregou.');
-        return;
-    }
-
-    const mapElement = document.getElementById("mapContainer");
-
-    if (!mapElement) {
-        console.error('Elemento mapContainer não encontrado.');
-        return;
-    }
-
-    directionsService = new google.maps.DirectionsService();
-
-    directionsRenderer = new google.maps.DirectionsRenderer();
-
-    map = new google.maps.Map(mapElement, {
-        zoom: 8,
-        center: {
-            lat: -22.368,
-            lng: -46.944
-        }
-    });
-
-    directionsRenderer.setMap(map);
-
-    isMapInitialized = true;
-
-    console.log('Mapa carregado com sucesso.');
-}
-</script>
 
 
 

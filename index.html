@@ -348,6 +348,10 @@
                     <input type="text" id="mapDestination" value="Av. Ver. José Maria Rangel - Parque Industrial Getulio Vargas, Mogi Guaçu - SP, 13849-252">
                 </div>
                 <button class="btn-export" style="width: auto; align-self: flex-end; padding: 12px 20px; font-size: 0.9rem; background: var(--bg-hover); color: var(--primary); border: 1px solid var(--border-color); box-shadow: none;" onclick="calculateRoute(false)">🔄 Recalcular Trajeto</button>
+                <div style="width: 100%; display: flex; gap: 10px; padding: 10px; background: rgba(51, 153, 255, 0.1); border-radius: var(--radius-sm); border: 1px solid rgba(51, 153, 255, 0.2);">
+                    <button id="btnRouteForward" class="btn-outline" style="flex: 1; border-color: var(--blue); color: var(--blue);" onclick="showRoute('forward')" title="Visualizar trajeto de ida">↓ Ida</button>
+                    <button id="btnRouteReturn" class="btn-outline" style="flex: 1; border-color: rgba(255,255,255,0.3); color: var(--text-muted);" onclick="showRoute('return')" title="Visualizar trajeto de volta">↑ Volta</button>
+                </div>
             </div>
 
             <div class="map-layout">
@@ -626,9 +630,11 @@
             orders.forEach(o => {
                 let isChecked = selectedOrdersIds.has(o.uid);
                 let filialDisplay = o.isMerged ? `<span class="badge-merged" title="Pedido Mesclado">100 + 777 ✨</span>` : o.filial;
-                tbody += `<tr><td style="text-align: center;"><input type="checkbox" class="modal-order-cb" value="${o.uid}" onchange="toggleOrderSelection('${o.uid}', this.checked)" ${isChecked ? 'checked' : ''}></td><td>${filialDisplay}</td><td><strong>${o.numero}</strong></td><td>${o.pedidoCliente}</td><td title="${o.nomeCliente}">${String(o.nomeCliente).substring(0, 25)}...</td><td style="color:var(--warning); font-weight:700;">${o.peso.toLocaleString('pt-BR')} kg</td><td style="color:var(--success); font-weight:700;">${o.valor.toLocaleString('pt-BR', {style:'currency', currency:'BRL'})}</td><td class="obs-text" title="${o.obs || 'Sem observação'}">${o.obs || '-'}</td></tr>`;
+                let endCompleto = `${o.endereco}, ${o.numeroEnd} - ${o.bairro}, ${o.cidade} - ${o.uf}, ${o.cep}`;
+                let deliveryLetter = getDeliveryLetter(endCompleto);
+                tbody += `<tr><td style="text-align: center;"><input type="checkbox" class="modal-order-cb" value="${o.uid}" onchange="toggleOrderSelection('${o.uid}', this.checked)" ${isChecked ? 'checked' : ''}></td><td style="text-align: center; font-weight: 900; color: var(--primary); font-size: 1rem; background: rgba(229, 193, 0, 0.1); border-radius: 4px; padding: 3px; min-width: 30px;">${deliveryLetter}</td><td>${filialDisplay}</td><td><strong>${o.numero}</strong></td><td>${o.pedidoCliente}</td><td title="${o.nomeCliente}">${String(o.nomeCliente).substring(0, 25)}...</td><td style="color:var(--warning); font-weight:700;">${o.peso.toLocaleString('pt-BR')} kg</td><td style="color:var(--success); font-weight:700;">${o.valor.toLocaleString('pt-BR', {style:'currency', currency:'BRL'})}</td><td class="obs-text" title="${o.obs || 'Sem observação'}">${o.obs || '-'}</td></tr>`;
             });
-            document.getElementById('modalBody').innerHTML = `<div style="display:flex; justify-content:space-between; align-items: flex-end; margin-bottom: 25px; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 15px;"><div><h2 style="color: var(--primary); margin: 0 0 8px 0; font-size: 1.8rem; font-weight: 800;">📍 Pendências em ${cidade} - ${uf}</h2></div></div><div class="table-responsive"><table class="orders-table"><thead><tr><th style="width: 40px;"></th><th>Filial</th><th>Número</th><th>Ped. Cliente</th><th>Cliente</th><th>Peso</th><th>Valor</th><th>Observação</th></tr></thead><tbody>${tbody}</tbody></table></div>`;
+            document.getElementById('modalBody').innerHTML = `<div style="display:flex; justify-content:space-between; align-items: flex-end; margin-bottom: 25px; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 15px;"><div><h2 style="color: var(--primary); margin: 0 0 8px 0; font-size: 1.8rem; font-weight: 800;">📍 Pendências em ${cidade} - ${uf}</h2></div></div><div class="table-responsive"><table class="orders-table"><thead><tr><th style="width: 40px;"></th><th style="width: 40px;">Entrega</th><th>Filial</th><th>Número</th><th>Ped. Cliente</th><th>Cliente</th><th>Peso</th><th>Valor</th><th>Observação</th></tr></thead><tbody>${tbody}</tbody></table></div>`;
             document.getElementById('cityModal').style.display = 'flex';
         }
 
@@ -643,22 +649,13 @@
             if(selectedOrdersIds.size === 0) { closeModal('reviewModal'); } else { renderReviewTable(); } 
         }
 
-        function renderReviewTable() {
-            const selectedData = rawData.filter(o => selectedOrdersIds.has(o.uid));
-            let tPeso = 0, tValor = 0, tVol = 0, tbody = '';
-            selectedData.forEach(o => {
-                tPeso += o.peso; tValor += o.valor; tVol += o.volumes;
-                let filialDisplay = o.isMerged ? `<span class="badge-merged" style="padding: 2px 6px; font-size: 0.65rem;">100 + 777</span>` : o.filial;
-                tbody += `<tr><td style="text-align: center;"><button class="btn-remove-row" onclick="removeOrderFromReview('${o.uid}')" title="Remover da Rota">✖</button></td><td><strong>${o.numero}</strong> <br> ${filialDisplay}</td><td title="${o.nomeCliente}">${String(o.nomeCliente).substring(0, 30)}...</td><td>${o.cidade} / ${o.uf}</td><td style="color:var(--warning); font-weight:700;">${o.peso.toLocaleString('pt-BR')} kg</td><td style="color:var(--success); font-weight:700;">${o.valor.toLocaleString('pt-BR', {style:'currency', currency:'BRL'})}</td></tr>`;
-            });
-            document.getElementById('reviewSummary').innerHTML = `<div style="background: var(--bg-input); padding: 20px; border-radius: var(--radius-sm); flex: 1; border-left: 4px solid var(--primary); min-width: 150px;"><span style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Pedidos</span><br><strong style="font-size: 1.8rem; color: #fff;">${selectedData.length}</strong></div><div style="background: var(--bg-input); padding: 20px; border-radius: var(--radius-sm); flex: 1; border-left: 4px solid var(--blue); min-width: 150px;"><span style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Volumes</span><br><strong style="font-size: 1.8rem; color: var(--blue);">${tVol}</strong></div><div style="background: var(--bg-input); padding: 20px; border-radius: var(--radius-sm); flex: 1; border-left: 4px solid var(--warning); min-width: 150px;"><span style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Peso Total</span><br><strong style="font-size: 1.8rem; color: var(--warning);">${tPeso.toLocaleString('pt-BR', {minimumFractionDigits: 1})} kg</strong></div>`;
-            document.querySelector('#reviewTable tbody').innerHTML = tbody;
-        }
+        function getDeliveryLetter(endereco) {\n            // Busca o índice do waypoint baseado no endereço\n            const wpIndex = currentMapWaypoints.findIndex(wp => \n                wp.address.toLowerCase().includes(endereco.toLowerCase()) ||\n                endereco.toLowerCase().includes(wp.address.toLowerCase())\n            );\n            return wpIndex >= 0 ? String.fromCharCode(65 + wpIndex) : '-';\n        }\n\n        function renderReviewTable() {\n            const selectedData = rawData.filter(o => selectedOrdersIds.has(o.uid));\n            let tPeso = 0, tValor = 0, tVol = 0, tbody = '';\n            selectedData.forEach(o => {\n                tPeso += o.peso; tValor += o.valor; tVol += o.volumes;\n                let filialDisplay = o.isMerged ? `<span class=\"badge-merged\" style=\"padding: 2px 6px; font-size: 0.65rem;\">100 + 777</span>` : o.filial;\n                let endCompleto = `${o.endereco}, ${o.numeroEnd} - ${o.bairro}, ${o.cidade} - ${o.uf}, ${o.cep}`;\n                let deliveryLetter = getDeliveryLetter(endCompleto);\n                tbody += `<tr><td style=\"text-align: center;\"><button class=\"btn-remove-row\" onclick=\"removeOrderFromReview('${o.uid}')\" title=\"Remover da Rota\">✖</button></td><td style=\"text-align: center; font-weight: 900; color: var(--primary); font-size: 1.1rem; background: rgba(229, 193, 0, 0.1); border-radius: 6px; padding: 5px; min-width: 40px;\">${deliveryLetter}</td><td><strong>${o.numero}</strong> <br> ${filialDisplay}</td><td title=\"${o.nomeCliente}\">${String(o.nomeCliente).substring(0, 30)}...</td><td>${o.cidade} / ${o.uf}</td><td style=\"color:var(--warning); font-weight:700;\">${o.peso.toLocaleString('pt-BR')} kg</td><td style=\"color:var(--success); font-weight:700;\">${o.valor.toLocaleString('pt-BR', {style:'currency', currency:'BRL'})}</td></tr>`;\n            });\n            document.getElementById('reviewSummary').innerHTML = `<div style=\"background: var(--bg-input); padding: 20px; border-radius: var(--radius-sm); flex: 1; border-left: 4px solid var(--primary); min-width: 150px;\"><span style=\"font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700;\">Pedidos</span><br><strong style=\"font-size: 1.8rem; color: #fff;\">${selectedData.length}</strong></div><div style=\"background: var(--bg-input); padding: 20px; border-radius: var(--radius-sm); flex: 1; border-left: 4px solid var(--blue); min-width: 150px;\"><span style=\"font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700;\">Volumes</span><br><strong style=\"font-size: 1.8rem; color: var(--blue);\">${tVol}</strong></div><div style=\"background: var(--bg-input); padding: 20px; border-radius: var(--radius-sm); flex: 1; border-left: 4px solid var(--warning); min-width: 150px;\"><span style=\"font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700;\">Peso Total</span><br><strong style=\"font-size: 1.8rem; color: var(--warning);\">${tPeso.toLocaleString('pt-BR', {minimumFractionDigits: 1})} kg</strong></div>`;\n            document.querySelector('#reviewTable tbody').innerHTML = tbody;\n        }
 
         // ==========================================
         //  INTEGRAÇÃO GOOGLE MAPS (ROTEIRIZAÇÃO)
         // ==========================================
         let draggedItem = null;
+        let currentRouteDirection = 'forward'; // 'forward' ou 'return'
 
         function openMapModal(historyId = null) {
             if(typeof google === 'undefined') {
@@ -733,11 +730,25 @@
             }
         }
 
+        function showRoute(direction) {
+            currentRouteDirection = direction;
+            document.getElementById('btnRouteForward').style.borderColor = direction === 'forward' ? 'var(--blue)' : 'rgba(255,255,255,0.3)';
+            document.getElementById('btnRouteForward').style.color = direction === 'forward' ? 'var(--blue)' : 'var(--text-muted)';
+            document.getElementById('btnRouteReturn').style.borderColor = direction === 'return' ? '#ff6b6b' : 'rgba(255,255,255,0.3)';
+            document.getElementById('btnRouteReturn').style.color = direction === 'return' ? '#ff6b6b' : 'var(--text-muted)';
+            calculateRoute(false);
+        }
+
         function calculateRoute(optimize = false) {
             if(!isMapInitialized || currentMapWaypoints.length === 0) return;
 
-            const origin = document.getElementById('mapOrigin').value;
-            const destination = document.getElementById('mapDestination').value;
+            let origin = document.getElementById('mapOrigin').value;
+            let destination = document.getElementById('mapDestination').value;
+            
+            // Se está vendo a volta, inverte origem e destino
+            if(currentRouteDirection === 'return') {
+                [origin, destination] = [destination, origin];
+            }
             
             const waypointsMap = currentMapWaypoints.map(wp => ({
                 location: wp.address,
@@ -787,8 +798,9 @@
                 div.className = 'draggable-item';
                 div.draggable = true;
                 div.dataset.index = i;
+                const letterLabel = String.fromCharCode(65 + i); // A, B, C, etc.
                 div.innerHTML = `
-                    <div style="font-weight:900; color:var(--primary); font-size:1.2rem; min-width:25px; text-align:center;">${i+1}</div>
+                    <div style="font-weight:900; color:var(--primary); font-size:1.3rem; min-width:40px; text-align:center; background:rgba(229, 193, 0, 0.15); border-radius:6px; padding:5px; height:40px; display:flex; align-items:center; justify-content:center;">${letterLabel}</div>
                     <div style="flex:1; overflow:hidden;">
                         <div style="font-size:0.85rem; color:#fff; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${wp.label}">${wp.label}</div>
                         <div style="font-size:0.7rem; color:var(--text-muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${wp.address}">${wp.address}</div>

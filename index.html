@@ -471,7 +471,7 @@
             </div>
             <div style="text-align: right; margin-top: 15px; display: flex; justify-content: flex-end; gap: 12px; flex-wrap: wrap;">
                 <button class="cart-btn" onclick="openRouteInGoogleMaps()" style="padding: 10px 25px; background: #2d8cff; color: #fff;">Abrir no Google Maps</button>
-                <button class="cart-btn" onclick="openRouteInWaze()" style="padding: 10px 25px; background: #3399ff; color: #fff;">Abrir Próxima no Waze</button>
+                <button class="cart-btn" onclick="openRouteInWaze()" style="padding: 10px 25px; background: #3399ff; color: #fff;">Abrir no Waze</button>
                 <button class="cart-btn" id="mapSaveBtn" onclick="saveMapOrderAndClose()" style="padding: 10px 25px;">Aplicar Esta Rota</button>
             </div>
         </div>
@@ -877,6 +877,7 @@
 
         function calculateRoute(optimize = false) {
             if(!isMapInitialized || currentMapWaypoints.length === 0) return;
+            lastDirectionsResponse = null;
 
             let origin = document.getElementById('mapOrigin').value;
             let destination = document.getElementById('mapDestination').value;
@@ -925,6 +926,7 @@
                     lastMapDurationText = document.getElementById('mapDur').innerText;
                     
                 } else {
+                    lastDirectionsResponse = null;
                     alert("Atenção: O Google não conseguiu traçar a rota com alguns dos endereços informados.\n\nCódigo do Erro: " + status);
                 }
             });
@@ -946,6 +948,7 @@
                         <div style="font-size:0.7rem; color:var(--text-muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${wp.address}">${wp.address}</div>
                     </div>
                     <div style="display:flex; align-items:center; gap: 10px;">
+                        <button class="btn-mini btn-mini-edit" style="padding:6px 8px; font-size:0.7rem;" onclick="openWaypointInWaze(${i}); event.stopPropagation();" title="Abrir esta parada no Waze">Waze</button>
                         <button class="btn-remove-map" onclick="removeWaypoint(${i})" title="Remover do Mapa">✖</button>
                         <div class="drag-handle" title="Arraste para reordenar">☰</div>
                     </div>
@@ -998,21 +1001,25 @@
                 return;
             }
 
-            const firstStop = currentMapWaypoints[0];
-            let url = '';
+            openWaypointInWaze(0);
+        }
 
-            if(lastDirectionsResponse && lastDirectionsResponse.routes && lastDirectionsResponse.routes[0] && lastDirectionsResponse.routes[0].legs && lastDirectionsResponse.routes[0].legs[0]) {
-                const nextLocation = lastDirectionsResponse.routes[0].legs[0].end_location;
-                url = `https://www.waze.com/ul?ll=${nextLocation.lat()},${nextLocation.lng()}&navigate=yes`;
-            } else {
-                const q = firstStop.address || firstStop.label;
-                url = `https://www.waze.com/ul?q=${encodeURIComponent(q)}&navigate=yes`;
+        function openWaypointInWaze(index) {
+            const stop = currentMapWaypoints[index];
+            if(!stop) {
+                alert('Parada não encontrada na rota.');
+                return;
             }
 
-            if(currentMapWaypoints.length > 1) {
-                alert('O Waze abre uma parada por vez. Vou abrir a próxima parada da rota.');
+            const legs = lastDirectionsResponse && lastDirectionsResponse.routes && lastDirectionsResponse.routes[0] ? lastDirectionsResponse.routes[0].legs : null;
+            if(legs && legs[index] && legs[index].end_location) {
+                const nextLocation = legs[index].end_location;
+                window.open(`https://www.waze.com/ul?ll=${nextLocation.lat()},${nextLocation.lng()}&navigate=yes&zoom=17`, '_blank');
+                return;
             }
-            window.open(url, '_blank');
+
+            const q = stop.address || stop.label;
+            window.open(`https://www.waze.com/ul?q=${encodeURIComponent(q)}&navigate=yes`, '_blank');
         }
 
         function clearRouteMarkers() {

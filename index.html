@@ -229,6 +229,23 @@
         .main-footer { text-align: center; padding: 25px; color: var(--text-muted); font-size: 0.85rem; border-top: 1px solid var(--border-color); background-color: var(--bg-body); margin-top: auto; width: 100%; box-sizing: border-box; font-weight: 500;}
         .main-footer strong { color: var(--primary); font-weight: 700; }
 
+        .loading-overlay { position: fixed; inset: 0; z-index: 2000; background: #000; display: flex; justify-content: center; align-items: center; color: #fff; font-family: inherit; }
+        .loading-box { text-align: center; padding: 32px 24px; }
+        .loading-logo { display: inline-block; font-size: 3rem; font-weight: 900; color: #E5C100; letter-spacing: 0.2em; margin-bottom: 18px; text-transform: uppercase; }
+        .loading-box p { margin: 0; color: #e5e5e5; font-size: 1rem; letter-spacing: 0.05em; }
+        body.no-data-mode .cart-floating-bar, body.no-data-mode footer, body.no-data-mode .modal-overlay { display: none !important; }
+
+        @media (max-width: 900px) {
+            body.no-data-mode .header-brand, body.no-data-mode .header-controls .history-btn, body.no-data-mode .header-controls .clear-btn { display: none !important; }
+            body.no-data-mode .header-controls { justify-content: center; }
+            body.no-data-mode .main-container { min-height: calc(100vh - 70px); padding: 24px 16px; }
+            body.no-data-mode .main-container > :not(#emptyState) { display: none !important; }
+            body.no-data-mode #emptyState { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: calc(100vh - 70px); text-align: center; }
+            body.no-data-mode #emptyState h2 { font-size: 1.45rem; }
+            body.no-data-mode #emptyState p { max-width: 420px; margin: 0 auto; }
+            body.no-data-mode .header-controls .upload-btn { display: flex !important; }
+        }
+
         @media (max-width: 1100px) {
             .main-container { padding: 30px 20px 120px 20px; }
             .filter-bar { gap: 15px; padding: 18px 20px; }
@@ -295,7 +312,13 @@
         }
     </style>
 </head>
-<body>
+<body class="no-data-mode">
+    <div id="loadingOverlay" class="loading-overlay">
+        <div class="loading-box">
+            <div class="loading-logo">PREMIATTA</div>
+            <p>Carregando plataforma de roteirização...</p>
+        </div>
+    </div>
 
    <header>
         <div class="header-brand">
@@ -475,6 +498,22 @@
         let lastMapDurationText = 'Nao calculado';
         let routeMarkers = [];
 
+        function hideLoadingOverlay() {
+            const overlay = document.getElementById('loadingOverlay');
+            if (overlay) overlay.style.display = 'none';
+        }
+
+        function enterNoDataMode() {
+            document.body.classList.add('no-data-mode');
+        }
+
+        function exitNoDataMode() {
+            document.body.classList.remove('no-data-mode');
+        }
+
+        window.addEventListener('load', hideLoadingOverlay);
+        window.setTimeout(hideLoadingOverlay, 4000);
+
         function initMap() {
             if(typeof google === 'undefined') return;
             directionsService = new google.maps.DirectionsService();
@@ -523,6 +562,7 @@
             if(!confirm("Atenção: Ao carregar uma nova planilha, perderá o histórico de rotas atual. Deseja continuar?")) return;
             rawData = []; selectedOrdersIds.clear(); finalizedOrdersIds.clear(); routesHistory = []; updateCartUI(); mapNeedsUpdate = true;
             document.getElementById('fileInput').value = ""; document.getElementById('dashboardContent').style.display = 'none'; document.getElementById('emptyState').style.display = 'block'; document.getElementById('btnLimpar').style.display = 'none'; document.getElementById('btnHistory').style.display = 'none';
+            enterNoDataMode();
         }
         function clearCart() { if(confirm("Deseja cancelar o planeamento desta rota e limpar o carrinho?")) { selectedOrdersIds.clear(); updateCartUI(); updateDashboard(); mapNeedsUpdate = true; } }
         function closeModal(modalId, e) {
@@ -608,6 +648,7 @@
                     buildMultiSelect('listRegiao', regioesSet); buildMultiSelect('listVendedor', vendedoresSet); buildMultiSelect('listCidade', cidadesSet);
                     document.getElementById('emptyState').style.display = 'none'; document.getElementById('dashboardContent').style.display = 'block';
                     document.getElementById('btnLimpar').style.display = 'flex'; document.getElementById('btnHistory').style.display = 'flex';
+                    exitNoDataMode();
                     updateDashboard();
 
                 } catch (error) { alert("Erro ao ler planilha: " + error.message); }
@@ -967,8 +1008,11 @@
                 alert('A rota não está definida. Adicione pelo menos uma parada.');
                 return;
             }
-            const destination = encodeURIComponent(document.getElementById('mapDestination').value);
-            const url = `https://www.waze.com/ul?q=${destination}&navigate=yes`;
+            const origin = document.getElementById('mapOrigin').value;
+            const destination = document.getElementById('mapDestination').value;
+            const waypointString = currentMapWaypoints.map(wp => wp.address || wp.label).join(' | ');
+            const q = [origin, waypointString, destination].filter(Boolean).join(' | ');
+            const url = `https://www.waze.com/ul?q=${encodeURIComponent(q)}&navigate=yes`;
             window.open(url, '_blank');
         }
 

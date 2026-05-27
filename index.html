@@ -752,11 +752,18 @@
         }
 
         function addManualWaypoint() {
-            let addr = prompt("Digite o endereço completo da nova parada (Ex: Rua XYZ, 100, Bairro, Cidade - SP):");
-            if(addr && addr.trim() !== '') {
-                currentMapWaypoints.push({ id: 'manual_'+Date.now(), address: addr, label: 'Parada Manual Extra', uids: [] });
-                renderDraggableList();
-                calculateRoute(false);
+            let name = prompt("Digite o nome da nova parada (por exemplo: Loja ABC, Cliente X):");
+            if(name !== null) {
+                name = name.trim();
+                if(name === '') {
+                    name = 'Parada Manual';
+                }
+                let addr = prompt("Digite o endereço completo da nova parada (Ex: Rua XYZ, 100, Bairro, Cidade - SP):");
+                if(addr && addr.trim() !== '') {
+                    currentMapWaypoints.push({ id: 'manual_'+Date.now(), address: addr.trim(), label: name, uids: [] });
+                    renderDraggableList();
+                    calculateRoute(false);
+                }
             }
         }
 

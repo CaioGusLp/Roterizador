@@ -969,6 +969,21 @@
             });
         }
 
+        // Formata a Data de Entrada vinda do TI9 (serial do Excel, Date ou texto) para dd/mm/aaaa
+        function formatDataEntrada(v) {
+            if (v === null || v === undefined || v === '' || v === '-') return '-';
+            const pad = n => String(n).padStart(2, '0');
+            if (typeof v === 'number') {
+                const d = XLSX.SSF.parse_date_code(v);
+                if (d) return `${pad(d.d)}/${pad(d.m)}/${d.y}`;
+            }
+            if (v instanceof Date && !isNaN(v)) return `${pad(v.getDate())}/${pad(v.getMonth() + 1)}/${v.getFullYear()}`;
+            const s = String(v).trim();
+            const iso = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+            if (iso) return `${iso[3]}/${iso[2]}/${iso[1]}`;
+            return s.split(' ')[0];
+        }
+
         function openCityModal(cidade, uf) {
             const regF = getSelectedValues('listRegiao'), vendF = getSelectedValues('listVendedor');
             const orders = rawData.filter(item => !finalizedOrdersIds.has(item.uid) && item.cidade === cidade && item.uf === uf && regF.includes(item.regiao) && vendF.includes(item.vendedor));
@@ -976,9 +991,9 @@
             orders.forEach(o => {
                 let isChecked = selectedOrdersIds.has(o.uid);
                 let filialDisplay = o.isMerged ? `<span class="badge-merged" title="Pedido Mesclado">100 + 777 ✨</span>` : o.filial;
-                tbody += `<tr><td style="text-align: center;"><input type="checkbox" class="modal-order-cb" value="${o.uid}" onchange="toggleOrderSelection('${o.uid}', this.checked)" ${isChecked ? 'checked' : ''}></td><td>${filialDisplay}</td><td><strong>${o.numero}</strong></td><td>${o.pedidoCliente}</td><td title="${o.nomeCliente}">${String(o.nomeCliente).substring(0, 25)}...</td><td style="color:var(--warning); font-weight:700;">${o.peso.toLocaleString('pt-BR')} kg</td><td style="color:var(--success); font-weight:700;">${o.valor.toLocaleString('pt-BR', {style:'currency', currency:'BRL'})}</td><td class="obs-text" title="${o.obs || 'Sem observação'}">${o.obs || '-'}</td></tr>`;
+                tbody += `<tr><td style="text-align: center;"><input type="checkbox" class="modal-order-cb" value="${o.uid}" onchange="toggleOrderSelection('${o.uid}', this.checked)" ${isChecked ? 'checked' : ''}></td><td>${filialDisplay}</td><td><strong>${o.numero}</strong></td><td style="white-space:nowrap;">${formatDataEntrada(o.dataEntrada)}</td><td>${o.pedidoCliente}</td><td title="${o.nomeCliente}">${String(o.nomeCliente).substring(0, 25)}...</td><td style="color:var(--warning); font-weight:700;">${o.peso.toLocaleString('pt-BR')} kg</td><td style="color:var(--success); font-weight:700;">${o.valor.toLocaleString('pt-BR', {style:'currency', currency:'BRL'})}</td><td class="obs-text" title="${o.obs || 'Sem observação'}">${o.obs || '-'}</td></tr>`;
             });
-            document.getElementById('modalBody').innerHTML = `<div style="display:flex; justify-content:space-between; align-items: flex-end; margin-bottom: 25px; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 15px;"><div><h2 style="color: var(--primary); margin: 0 0 8px 0; font-size: 1.8rem; font-weight: 800;">📍 Pendências em ${cidade} - ${uf}</h2></div></div><div class="table-responsive"><table class="orders-table"><thead><tr><th style="width: 40px;"></th><th>Filial</th><th>Número</th><th>Ped. Cliente</th><th>Cliente</th><th>Peso</th><th>Valor</th><th>Observação</th></tr></thead><tbody>${tbody}</tbody></table></div>`;
+            document.getElementById('modalBody').innerHTML = `<div style="display:flex; justify-content:space-between; align-items: flex-end; margin-bottom: 25px; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 15px;"><div><h2 style="color: var(--primary); margin: 0 0 8px 0; font-size: 1.8rem; font-weight: 800;">📍 Pendências em ${cidade} - ${uf}</h2></div></div><div class="table-responsive"><table class="orders-table"><thead><tr><th style="width: 40px;"></th><th>Filial</th><th>Número</th><th>Data Entrada</th><th>Ped. Cliente</th><th>Cliente</th><th>Peso</th><th>Valor</th><th>Observação</th></tr></thead><tbody>${tbody}</tbody></table></div>`;
             document.getElementById('cityModal').style.display = 'flex';
         }
 
@@ -1983,14 +1998,5 @@
             doc.line(120, currentY, 190, currentY); doc.setFontSize(8); doc.text("Assinatura do Motorista / Conferente", 130, currentY + 5); doc.save(`Romaneio_${name.replace(/\s+/g, '_')}.pdf`);
         }
     </script>
-
-
-
-
-
-
-
-
-
 </body>
 </html>
